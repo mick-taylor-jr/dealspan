@@ -1,0 +1,35 @@
+import Link from 'next/link';
+
+const steps = [
+  ['01', 'Enter both companies', 'Add three years of revenue and EBITDA, along with the operating details behind them.'],
+  ['02', 'Set the deal terms', 'Choose an offer, financing plan and investment horizon.'],
+  ['03', 'Test the combination', 'Describe the synergies and how well the companies fit together.'],
+  ['04', 'Review the analysis', 'Compare DCF, LBO, comparable sales and financing in one place.'],
+];
+
+export function LandingPage() {
+  return (
+    <main id="main" className="mx-auto w-full max-w-6xl px-5 sm:px-8">
+      <section className="grid gap-12 border-b border-line py-16 sm:py-24 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
+        <div>
+          <p className="mb-5 text-xs font-semibold uppercase tracking-[.18em] text-muted">A clearer way to buy a business</p>
+          <h1 className="max-w-3xl text-5xl leading-[1.02] font-semibold tracking-[-.045em] text-balance sm:text-7xl">Know what you’re really buying.</h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">We check the seller’s earnings claims against the documents, then value the business with DCF, LBO, comps and precedents.</p>
+          <Link href="/deal" className="mt-8 inline-flex h-12 items-center bg-signal px-6 text-sm font-semibold text-white hover:bg-signal/90">Start a deal <span className="ml-4" aria-hidden>→</span></Link>
+        </div>
+        <div className="grid grid-cols-1 divide-y divide-line border-y border-line">
+          <div className="py-5"><div className="text-3xl font-semibold tracking-tight text-signal">$350K</div><p className="mt-1 text-sm leading-6 text-muted">Median U.S. small-business sale price in 2025.</p></div>
+          <div className="py-5"><div className="text-3xl font-semibold tracking-tight text-signal">$15–25K</div><p className="mt-1 text-sm leading-6 text-muted">Typical quality-of-earnings report: 4–7% of that deal size.</p></div>
+          <div className="py-5"><div className="text-3xl font-semibold tracking-tight text-signal">$3M+</div><p className="mt-1 text-sm leading-6 text-muted">The SBA generally requires a QoE only for larger loans at this size.</p></div>
+        </div>
+      </section>
+      <section className="py-16 sm:py-20">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-muted">From first look to offer</p><h2 className="mt-3 text-3xl font-semibold tracking-tight">How it works</h2></div><Link href="/deal" className="text-sm font-semibold text-ink underline underline-offset-4">Start a deal →</Link></div>
+        <div className="grid border-l border-t border-line sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map(([number, title, description]) => <article key={number} className="border-b border-r border-line p-6"><span className="font-mono text-sm text-signal">{number}</span><h3 className="mt-8 text-lg font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-muted">{description}</p></article>)}
+        </div>
+      </section>
+      <section className="flex flex-col items-start justify-between gap-5 border-t border-line py-12 sm:flex-row sm:items-center"><div><h2 className="text-2xl font-semibold">Make your next offer with a reason behind it.</h2><p className="mt-2 text-sm text-muted">Start with your company, the target and the numbers you can support.</p></div><Link href="/deal" className="inline-flex h-12 items-center bg-signal px-6 text-sm font-semibold text-white">Start a deal <span className="ml-4" aria-hidden>→</span></Link></section>
+    </main>
+  );
+}

@@ -12,6 +12,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "geist": "^1.9.2",
     "next": "16.4.5",
     "react": "19.3.0",
@@ -30,7 +31,5 @@
     "typescript": "^5"
   },
   "packageManager": "pnpm@10.28.0",
-  "engines": {
-    "node": ">=22"
-  }
+  "engines": { "node": ">=22" }
 }
