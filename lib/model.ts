@@ -1,5 +1,5 @@
 import { ASSUMPTIONS, costOfEquity, sizeDiscount, wacc } from '@/lib/assumptions';
-import { industryMarket, selectComparables, type CompSelection, type IndustryMarket } from '@/lib/comps';
+import { industryMarket, type IndustryMarket } from '@/lib/comps';
 import { runFinancing, type Financing } from '@/lib/financing';
 import { industryInfo } from '@/lib/industries';
 import { num, type CompanyInput, type Intake } from '@/lib/types';
@@ -528,6 +528,13 @@ export type FieldRow = {
   high: number;
 };
 
+export type Scenario = {
+  id: 'offer' | 'good' | 'average' | 'bad';
+  name: string;
+  price: number;
+  financing: Financing;
+};
+
 export type Analysis = {
   buyer: Company;
   target: Company;
@@ -541,8 +548,8 @@ export type Analysis = {
   buyerRows: ProjectionYear[];
   dcf: DcfResult;
   lbo: LboResult;
-  comps: CompSelection;
   publicRef: PublicRef | null;
+  scenarios: Scenario[];
   market: IndustryMarket;
   financing: Financing;
   synergies: SynergyResult;
@@ -578,13 +585,6 @@ export function analyze(intake: Intake): Analysis | null {
 
   const dcf = runDcf(target, targetRows.slice(0, ASSUMPTIONS.projectionYears), deal);
   const lbo = runLbo(verifiedEbitda, targetRows, deal);
-  const comps = selectComparables({
-    industry: target.industry,
-    subsector: intake.target.subsector,
-    ebitda: verifiedEbitda,
-    buyerType: intake.deal.buyerType,
-    earnout: intake.deal.earnout === 'yes',
-  });
   const publicRef = publicReference(target, verifiedEbitda);
   const market = industryMarket(target.industry);
   const synergies = runSynergies(intake, deal, years);
@@ -602,23 +602,6 @@ export function analyze(intake: Intake): Analysis | null {
   });
 
   const field: FieldRow[] = [];
-  if (comps.enough) {
-    field.push({
-      id: 'comps',
-      name: 'Most similar sales',
-      detail: `${comps.count} closest deals, ${comps.q1.toFixed(1)}–${comps.q3.toFixed(1)}× profit`,
-      low: comps.q1 * verifiedEbitda,
-      high: comps.q3 * verifiedEbitda,
-    });
-  } else if (publicRef) {
-    field.push({
-      id: 'comps',
-      name: 'Public companies, size-adjusted',
-      detail: `Fewer than 3 similar sales. ${publicRef.multipleLow.toFixed(1)}–${publicRef.multipleHigh.toFixed(1)}×`,
-      low: publicRef.evLow,
-      high: publicRef.evHigh,
-    });
-  }
   if (market.deals.length >= 3) {
     field.push({
       id: 'precedents',
@@ -626,6 +609,14 @@ export function analyze(intake: Intake): Analysis | null {
       detail: `${market.basis === 'small' ? market.small.length : market.deals.length} deals, middle half ${market.q1.toFixed(1)}–${market.q3.toFixed(1)}×`,
       low: market.q1 * verifiedEbitda,
       high: market.q3 * verifiedEbitda,
+    });
+  } else if (publicRef) {
+    field.push({
+      id: 'public',
+      name: 'Public companies, size-adjusted',
+      detail: `Fewer than 3 sales in this industry. ${publicRef.multipleLow.toFixed(1)}–${publicRef.multipleHigh.toFixed(1)}×`,
+      low: publicRef.evLow,
+      high: publicRef.evHigh,
     });
   }
   field.push({
@@ -662,31 +653,60 @@ export function analyze(intake: Intake): Analysis | null {
       ? { gap: sellerEbitda - verifiedEbitda, overpay: (sellerEbitda - verifiedEbitda) * deal.offerMultiple }
       : null;
 
+  // Good / average / bad prices: the average of the standalone methods' low ends, midpoints and high ends.
+  const standalone = field.filter((f) => f.id !== 'strategic');
+  const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const goodPrice = mean(standalone.map((f) => f.low));
+  const averagePrice = mean(standalone.map((f) => (f.low + f.high) / 2));
+  const badPrice = mean(standalone.map((f) => f.high));
+  const financingAt = (price: number, plannedLoan: number) =>
+    runFinancing({
+      ebitda: verifiedEbitda,
+      price,
+      fees: price * deal.feesPct,
+      rate: deal.rate,
+      plannedLoan,
+      sameIndustry: buyer.industry === target.industry,
+      buyerType: intake.deal.buyerType,
+      cashOnHand: buyer.cash,
+    });
+  const scenarios: Scenario[] = [
+    { id: 'offer', name: 'Your offer', price: offerEv, financing },
+    { id: 'good', name: 'Good deal', price: goodPrice, financing: financingAt(goodPrice, 0) },
+    { id: 'average', name: 'Average deal', price: averagePrice, financing: financingAt(averagePrice, 0) },
+    { id: 'bad', name: 'Bad deal', price: badPrice, financing: financingAt(badPrice, 0) },
+  ];
+
   const points: string[] = [];
-  const standaloneHigh = Math.max(...field.filter((f) => f.id !== 'strategic').map((f) => f.high));
-  const standaloneLow = Math.min(...field.filter((f) => f.id !== 'strategic').map((f) => f.low));
   let tone: Analysis['verdict']['tone'] = 'good';
   let headline: string;
-  if (offerEv > standaloneHigh) {
-    tone = 'risk';
-    headline = `Your ${fmtM(offerEv)} offer is above every standalone method.`;
-    points.push('You would be paying the seller for synergies that only you can create.');
-  } else if (offerEv < standaloneLow) {
-    headline = `Your ${fmtM(offerEv)} offer is below every standalone method.`;
-    points.push('That is room to negotiate, or a sign the seller will say no. Check the asking price.');
+  const where = (price: number) =>
+    price <= goodPrice
+      ? 'at or below the good-deal price'
+      : price <= averagePrice
+        ? 'between a good and an average price'
+        : price <= badPrice
+          ? 'between an average and a bad price'
+          : 'above the bad-deal price';
+  if (offerEv <= goodPrice) {
+    headline = `Your ${fmtM(offerEv)} offer is a good deal: at or below the ${fmtM(goodPrice)} good-deal price.`;
+    points.push(
+      'That is a strong price for you. The risk is the seller saying no, so check the asking price.',
+    );
+  } else if (offerEv <= averagePrice) {
+    headline = `Your ${fmtM(offerEv)} offer is between a good (${fmtM(goodPrice)}) and an average (${fmtM(averagePrice)}) price.`;
+  } else if (offerEv <= badPrice) {
+    tone = 'caution';
+    headline = `Your ${fmtM(offerEv)} offer is above an average price of ${fmtM(averagePrice)}.`;
+    points.push(`Past ${fmtM(badPrice)} it becomes a bad deal on the business’s own numbers.`);
   } else {
-    headline = `Your ${fmtM(offerEv)} offer sits inside the standalone range of ${fmtM(standaloneLow)}–${fmtM(standaloneHigh)}.`;
+    tone = 'risk';
+    headline = `Your ${fmtM(offerEv)} offer is a bad deal: above the ${fmtM(badPrice)} bad-deal price.`;
+    points.push('You would be paying the seller for synergies that only you can create.');
   }
   if (askingPrice != null) {
-    const inside = askingPrice >= standaloneLow && askingPrice <= standaloneHigh;
     points.push(
-      `The seller is asking ${fmtM(askingPrice)} (${(askingPrice / verifiedEbitda).toFixed(1)}× supported EBITDA), ${
-        inside
-          ? 'which is inside the standalone range'
-          : askingPrice > standaloneHigh
-            ? 'which is above every standalone method'
-            : 'which is below every standalone method'
-      }.`,
+      `The seller is asking ${fmtM(askingPrice)} (${(askingPrice / verifiedEbitda).toFixed(1)}× supported EBITDA), ${where(askingPrice)}.`,
     );
   }
   if (lbo.irr != null)
@@ -740,8 +760,8 @@ export function analyze(intake: Intake): Analysis | null {
     buyerRows,
     dcf,
     lbo,
-    comps,
     publicRef,
+    scenarios,
     market,
     financing,
     synergies,

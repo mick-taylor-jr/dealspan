@@ -11,8 +11,8 @@ is entered once, on the intake page. The results workspace then builds, with no 
   WACC × growth sensitivity.
 - **LBO**: sources and uses, cash sweep debt paydown, IRR / MOIC, debt coverage, most you can pay for your target
   return, entry × exit sensitivity.
-- **Financing**: recommended SBA 7(a) loan and buyer cash under SOP 50 10 8.1 (coverage, 10% equity, $5M cap), each number sourced.
-- **Comps**: the closest sold businesses from `lib/deals.ts`, scored 1–100 with DealSpan’s similarity rules (`lib/comps.ts`).
+- **Financing**: SBA 7(a) loan and buyer cash at your offer and at the good, average and bad prices and buyer cash under SOP 50 10 8.1 (coverage, 10% equity, $5M cap), each number sourced.
+- **Deal prices**: good, average and bad prices (the average of the standalone methods’ low ends, midpoints and high ends) shown on the football field and financed side by side with your offer.
 - **Precedents**: every sale in the target’s industry charted as price ÷ profit, with details and source links.
 - **Combined**: buyer + target + phased synergies, leverage before and after, cash left after the equity check.
 

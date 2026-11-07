@@ -19,18 +19,24 @@ function niceTicks(min: number, max: number, count = 5) {
   return ticks;
 }
 
+export type PricePoint = { id: string; name: string; value: number; color: string };
+
 /** Valuation ranges by method, with your offer and the asking price as vertical markers. */
 export function FootballField({
   rows,
   offer,
   asking,
+  prices = [],
 }: {
   rows: FieldRow[];
   offer: number;
   asking: number | null;
+  prices?: PricePoint[];
 }) {
   const [hover, setHover] = useState<string | null>(null);
-  const values = rows.flatMap((r) => [r.low, r.high]).concat(offer, asking ?? offer);
+  const values = rows
+    .flatMap((r) => [r.low, r.high])
+    .concat(offer, asking ?? offer, ...prices.map((p) => p.value));
   const ticks = niceTicks(Math.min(...values) * 0.85, Math.max(...values) * 1.05);
   const lo = ticks[0];
   const hi = ticks[ticks.length - 1];
@@ -62,6 +68,14 @@ export function FootballField({
               <span className="text-xs leading-4 text-faint">{row.detail}</span>
             </div>
           ))}
+          {prices.length ? (
+            <div className="hidden h-20 flex-col justify-center pr-2 sm:flex">
+              <span className="text-sm font-medium leading-5">Deal prices</span>
+              <span className="text-xs leading-4 text-faint">
+                Good, average and bad, from the methods above
+              </span>
+            </div>
+          ) : null}
         </div>
         <div className="relative mx-10">
           {rows.map((row) => {
@@ -115,9 +129,10 @@ export function FootballField({
               </div>
             );
           })}
+          {prices.length ? <PriceRow prices={prices} x={x} /> : null}
           <div
             className="pointer-events-none absolute inset-x-0 top-0"
-            style={{ height: `${rows.length * 4}rem` }}
+            style={{ height: `${rows.length * 4 + (prices.length ? 5 : 0)}rem` }}
           >
             <Marker left={x(offer)} label={`Offer ${usdShort(offer)}`} solid />
             {asking ? <Marker left={x(asking)} label={`Ask ${usdShort(asking)}`} below /> : null}
@@ -136,6 +151,37 @@ export function FootballField({
         </div>
       </div>
       {asking ? <div className="h-6" /> : null}
+    </div>
+  );
+}
+
+function PriceRow({ prices, x }: { prices: PricePoint[]; x: (v: number) => number }) {
+  const sorted = [...prices].sort((a, b) => a.value - b.value);
+  const lo = sorted[0].value;
+  const hi = sorted[sorted.length - 1].value;
+  return (
+    <div className="relative h-20 border-b border-line/70">
+      <span className="absolute left-0 top-1 text-xs font-medium sm:hidden">Deal prices</span>
+      <div
+        className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[#dfe5e1]"
+        style={{ left: `${x(lo)}%`, width: `${x(hi) - x(lo)}%` }}
+      />
+      {sorted.map((p, i) => (
+        <div key={p.id} className="absolute top-1/2" style={{ left: `${x(p.value)}%` }}>
+          <span
+            className="absolute block h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white"
+            style={{ background: p.color }}
+          />
+          <span
+            className={`absolute -translate-x-1/2 whitespace-nowrap text-center text-[11px] leading-4 ${
+              i % 2 === 0 ? 'bottom-3' : 'top-3'
+            }`}
+          >
+            <span className="block font-medium text-ink">{p.name}</span>
+            <span className="block tabular-nums text-muted">{usdShort(p.value)}</span>
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -299,9 +345,6 @@ export function MultipleBars({
       <div className="mb-8 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
         <span className="flex items-center gap-2">
           <Swatch color={COLORS.target} /> Price ÷ profit
-        </span>
-        <span className="flex items-center gap-2">
-          <Swatch color={COLORS.syn} /> Also one of your closest matches
         </span>
         <span className="flex items-center gap-2">
           <span aria-hidden className="inline-block h-3 w-0.5 bg-ink" /> Your offer

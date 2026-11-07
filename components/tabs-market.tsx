@@ -3,12 +3,11 @@
 import type { ReactNode } from 'react';
 import { MultipleBars, SplitBar } from '@/components/charts';
 import { COLORS, Panel, Prov, Stat } from '@/components/ui';
-import { COMP_SETTINGS, type ScoredDeal } from '@/lib/comps';
 import { DEALS_SOURCE } from '@/lib/deals';
 import { FINANCING_SOURCES, SBA } from '@/lib/financing';
 import { pct, times, usd, usdShort } from '@/lib/format';
-import { DAMODARAN_SOURCE, industryLabel } from '@/lib/industries';
-import type { Analysis } from '@/lib/model';
+import { industryLabel } from '@/lib/industries';
+import type { Analysis, Scenario } from '@/lib/model';
 
 /* ---------- Shared intro block ---------- */
 
@@ -35,177 +34,10 @@ function SourceLink({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
-/* ---------- Comps ---------- */
-
-const CONFIDENCE_STYLE = {
-  high: 'bg-buyer-soft text-[#0e6145]',
-  medium: 'bg-warn-soft text-[#7a4f00]',
-  low: 'bg-risk-soft text-risk',
-};
-
-export function CompsTab({ a }: { a: Analysis }) {
-  const c = a.comps;
-  const e = a.verifiedEbitda;
-  return (
-    <>
-      <TabIntro
-        what="The sold businesses most like this one, ranked by a 1–100 similarity score: same type of work, similar size, same kind of buyer, deal structure and how recent."
-        why="What similar businesses actually sold for is the first thing a seller, broker or lender will compare your offer to. Closer matches count more."
-      />
-
-      <section className="rounded-2xl border border-line bg-card p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="text-sm text-muted">Similar businesses sold for</div>
-            {c.enough ? (
-              <div className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
-                {usdShort(c.q1 * e)} – {usdShort(c.q3 * e)}
-              </div>
-            ) : (
-              <div className="mt-1 text-xl font-semibold">Not enough close matches</div>
-            )}
-            <p className="mt-1 text-sm text-muted">
-              {c.enough
-                ? `${times(c.q1)}–${times(c.q3)} profit, middle ${times(c.med)} = ${usd(c.med * e)} on ${usd(e)} of EBITDA.`
-                : `We need 3 deals within 5× this company’s size. Found ${c.count}.`}
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <span className={`rounded-full px-3 py-1 text-sm font-medium ${CONFIDENCE_STYLE[c.confidence]}`}>
-              {c.confidence === 'high' ? 'Strong' : c.confidence === 'medium' ? 'Fair' : 'Weak'} match
-            </span>
-            <span className="text-xs text-faint">
-              {c.count} used of {c.considered} {industryLabel(a.target.industry).split(' (')[0].toLowerCase()}{' '}
-              deals
-            </span>
-          </div>
-        </div>
-        {c.enough ? (
-          <div className="mt-5 flex items-center gap-3 text-sm">
-            <span className="w-28 shrink-0 text-muted">Your offer</span>
-            <OfferVsRange low={c.q1} high={c.q3} offer={a.deal.offerMultiple} />
-          </div>
-        ) : null}
-      </section>
-
-      <Panel title="The closest matches, ranked" aside="Score out of 100">
-        {c.used.length ? (
-          <ol className="flex flex-col divide-y divide-line">
-            {c.used.map((d, i) => (
-              <CompRow key={`${d.target}-${d.date}`} rank={i + 1} d={d} />
-            ))}
-          </ol>
-        ) : (
-          <p className="text-sm text-muted">
-            No sold business in this industry is close enough to score 40 or more.
-          </p>
-        )}
-      </Panel>
-
-      {c.notUsed.length ? (
-        <details className="rounded-2xl border border-line bg-card p-6">
-          <summary className="cursor-pointer text-sm font-semibold">
-            {c.notUsed.length} more deals in this industry were too different to use
-          </summary>
-          <ul className="mt-3 flex flex-col gap-2 text-sm">
-            {c.notUsed.map((d) => (
-              <li key={`${d.target}-${d.date}`} className="flex flex-wrap justify-between gap-2 text-muted">
-                <span>
-                  <span className="text-ink">{d.target}</span>, {d.date.slice(0, 4)}: {d.reasons[0]}
-                </span>
-                <span className="tabular-nums">
-                  {Math.round(d.score)}/100{d.parts.size === 0 ? ', too far from your size' : ''}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
-
-      <details className="rounded-2xl border border-line bg-card p-6">
-        <summary className="cursor-pointer text-sm font-semibold">
-          How the score works, and where the data comes from
-        </summary>
-        <div className="mt-3 flex flex-col gap-3 text-sm leading-6 text-muted">
-          <p>
-            Out of 100: same type of work 25, size 30 (full points at the same size, zero at 5× bigger or
-            smaller), same kind of buyer 15, deal structure 10 (earnout, 100% bought), how recent 10, priced
-            on actual rather than forecast profit 10. A deal needs {COMP_SETTINGS.minCompScore}+ points and
-            must be within 5× your size. We use the {COMP_SETTINGS.maxComps} closest at most. The middle
-            multiple is weighted by score, so closer deals count more.
-          </p>
-          <p>
-            Deals: {DEALS_SOURCE}. Each row links to the filing or press release. Foreign deals are converted
-            to US$ at the workbook’s rates.
-          </p>
-          {a.publicRef ? (
-            <p>
-              For reference, large public companies in {a.publicRef.sector} trade around{' '}
-              {times(a.publicRef.publicMultiple)} profit (
-              <SourceLink href={DAMODARAN_SOURCE.url}>{DAMODARAN_SOURCE.title}</SourceLink>). Small businesses
-              sell for far less, so don’t let anyone price this like a public company.
-            </p>
-          ) : null}
-        </div>
-      </details>
-    </>
-  );
-}
-
-function CompRow({ rank, d }: { rank: number; d: ScoredDeal }) {
-  return (
-    <li className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 py-4 sm:grid-cols-[2rem_1fr_11rem_5rem] sm:items-center">
-      <span className="hidden text-sm font-semibold text-faint tabular-nums sm:block">#{rank}</span>
-      <div className="col-span-2 min-w-0 sm:col-span-1">
-        <div className="font-medium">
-          <span className="mr-2 text-faint sm:hidden">#{rank}</span>
-          {d.target}
-        </div>
-        <div className="text-xs leading-5 text-muted">
-          Bought by {d.acquirer} in {d.date.slice(0, 4)}. {d.subsector}. {d.reasons.join(', ')}.{' '}
-          <SourceLink href={d.source}>Source</SourceLink>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#e8ece9]">
-          <div className="h-full rounded-full bg-pine" style={{ width: `${Math.min(100, d.score)}%` }} />
-        </div>
-        <span className="w-12 text-right text-sm font-semibold tabular-nums">{Math.round(d.score)}</span>
-      </div>
-      <div className="text-right">
-        <div className="text-lg font-semibold tabular-nums">{times(d.multiple)}</div>
-        <div className="text-xs text-faint">{usdShort(d.ev)} price</div>
-      </div>
-    </li>
-  );
-}
-
-function OfferVsRange({ low, high, offer }: { low: number; high: number; offer: number }) {
-  const max = Math.max(high, offer) * 1.25;
-  const x = (v: number) => `${(v / max) * 100}%`;
-  return (
-    <div className="relative h-8 flex-1">
-      <div className="absolute inset-x-0 top-1/2 h-px bg-line" />
-      <div
-        className="absolute top-1/2 h-3 -translate-y-1/2 rounded"
-        style={{ left: x(low), width: `calc(${x(high)} - ${x(low)})`, background: COLORS.target }}
-      />
-      <div className="absolute top-0 h-8 w-0.5 bg-ink" style={{ left: x(offer) }} />
-      <span
-        className="absolute -bottom-4 -translate-x-1/2 text-[11px] tabular-nums text-muted"
-        style={{ left: x(offer) }}
-      >
-        {times(offer)}
-      </span>
-    </div>
-  );
-}
-
 /* ---------- Precedents ---------- */
 
 export function PrecedentsTab({ a }: { a: Analysis }) {
   const m = a.market;
-  const used = new Set(a.comps.used.map((d) => `${d.target}-${d.date}`));
   const rows = [...m.deals]
     .sort((x, y) => y.multiple - x.multiple)
     .map((d) => ({
@@ -213,7 +45,6 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
       name: d.target,
       sub: `${d.date.slice(0, 4)}, ${usdShort(d.ebitda!)} profit`,
       multiple: d.multiple,
-      highlight: used.has(`${d.target}-${d.date}`),
     }));
   return (
     <>
@@ -324,8 +155,10 @@ export function FinancingTab({ a }: { a: Analysis }) {
         why="Borrow too much and one slow year means you can’t make the loan payment. Borrow more than the rules allow and the bank won’t approve the loan."
       />
 
+      <ScenarioFinancing a={a} />
+
       <section className="rounded-2xl border border-line bg-card p-6">
-        <div className="text-sm text-muted">Our recommendation</div>
+        <div className="text-sm text-muted">Our recommendation at your offer</div>
         <p className="mt-1 text-2xl font-semibold tracking-tight text-balance">
           Borrow about {usd(f.recommendedLoan)} with an SBA 7(a) loan and put in {usd(f.buyerCash)} of your
           own cash.
@@ -478,6 +311,114 @@ export function FinancingTab({ a }: { a: Analysis }) {
         </div>
       </details>
     </>
+  );
+}
+
+const SCENARIO_COLOR: Record<Scenario['id'], string> = {
+  offer: '#17201c',
+  good: '#14845e',
+  average: '#8a978f',
+  bad: '#b4432e',
+};
+
+function ScenarioFinancing({ a }: { a: Analysis }) {
+  const maxCost = Math.max(...a.scenarios.map((s) => s.financing.projectCost));
+  const rows: Array<[string, (s: Scenario) => ReactNode]> = [
+    ['Price', (s) => usd(s.price)],
+    ['Total cost with fees', (s) => usd(s.financing.projectCost)],
+    ['Bank loan (SBA 7(a))', (s) => usd(s.financing.recommendedLoan)],
+    ['Your cash', (s) => usd(s.financing.buyerCash)],
+    ['Yearly loan payment', (s) => usd(s.financing.recommendedPayment)],
+    ['Profit covers the payment', (s) => times(s.financing.recommendedCoverage, 2)],
+    [
+      'Your cash after closing',
+      (s) => {
+        const left = s.financing.cashOnHand - s.financing.buyerCash;
+        return <span className={left < 0 ? 'text-risk' : ''}>{usd(left)}</span>;
+      },
+    ],
+  ];
+  return (
+    <Panel title="Financing at each price" aside="Same good, average and bad prices as the Overview chart">
+      <div className="flex flex-col gap-4">
+        {a.scenarios.map((s) => (
+          <div key={s.id} className="grid gap-2 sm:grid-cols-[9rem_1fr] sm:items-center sm:gap-4">
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ background: SCENARIO_COLOR[s.id] }}
+              />
+              <span className="text-sm font-semibold">{s.name}</span>
+            </div>
+            <div style={{ width: `${(s.financing.projectCost / maxCost) * 100}%` }} className="min-w-[60%]">
+              <div className="flex h-7 w-full gap-[2px] overflow-hidden rounded-md">
+                <div
+                  style={{
+                    width: `${(s.financing.recommendedLoan / s.financing.projectCost) * 100}%`,
+                    background: COLORS.syn,
+                  }}
+                  title={`Loan ${usd(s.financing.recommendedLoan)}`}
+                />
+                <div
+                  style={{
+                    width: `${(s.financing.buyerCash / s.financing.projectCost) * 100}%`,
+                    background: COLORS.buyer,
+                  }}
+                  title={`Your cash ${usd(s.financing.buyerCash)}`}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted sm:pl-[10rem]">
+          <span className="flex items-center gap-2">
+            <span aria-hidden className="h-2.5 w-2.5 rounded-sm" style={{ background: COLORS.syn }} /> Bank
+            loan
+          </span>
+          <span className="flex items-center gap-2">
+            <span aria-hidden className="h-2.5 w-2.5 rounded-sm" style={{ background: COLORS.buyer }} /> Your
+            cash
+          </span>
+          <span>Bar length = total cost</span>
+        </div>
+      </div>
+      <div className="mt-6 overflow-x-auto">
+        <table className="w-full min-w-[620px] text-sm tabular-nums">
+          <thead>
+            <tr className="border-b border-line text-xs text-faint">
+              <th className="py-2 text-left font-normal" />
+              {a.scenarios.map((s) => (
+                <th
+                  key={s.id}
+                  className={`py-2 text-right font-medium ${s.id === 'offer' ? 'text-ink' : ''}`}
+                >
+                  {s.name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([name, get]) => (
+              <tr key={name} className="border-b border-line/60">
+                <td className="py-2 pr-4">{name}</td>
+                {a.scenarios.map((s) => (
+                  <td key={s.id} className={`py-2 text-right ${s.id === 'offer' ? 'font-semibold' : ''}`}>
+                    {get(s)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-4 text-sm leading-6 text-muted">
+        A good deal is the low end of what the business is worth on its own, an average deal is the middle,
+        and a bad deal is the high end, averaged across the valuation methods on the Overview. If the bad-deal
+        price still finances comfortably, you have room to negotiate. If only the good-deal price works, don’t
+        chase the seller up.
+      </p>
+    </Panel>
   );
 }
 

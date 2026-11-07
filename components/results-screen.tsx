@@ -9,21 +9,11 @@ import { ASSUMPTION_NOTES, ASSUMPTIONS } from '@/lib/assumptions';
 import { DEMO_STORIES } from '@/lib/demo';
 import { pct, times, usd, usdShort } from '@/lib/format';
 import { industryLabel } from '@/lib/industries';
-import { CompsTab, FinancingTab, PrecedentsTab, TabIntro } from '@/components/tabs-market';
+import { FinancingTab, PrecedentsTab, TabIntro } from '@/components/tabs-market';
 import type { Analysis } from '@/lib/model';
 import type { Intake } from '@/lib/types';
 
-const TABS = [
-  'Overview',
-  'Fit',
-  'Synergies',
-  'Financing',
-  'DCF',
-  'LBO',
-  'Comps',
-  'Precedents',
-  'Combined',
-] as const;
+const TABS = ['Overview', 'Fit', 'Synergies', 'Financing', 'DCF', 'LBO', 'Precedents', 'Combined'] as const;
 type Tab = (typeof TABS)[number];
 
 export function ResultsScreen() {
@@ -81,7 +71,6 @@ export function ResultsScreen() {
         {tab === 'Financing' ? <FinancingTab a={a} /> : null}
         {tab === 'DCF' ? <DcfTab a={a} /> : null}
         {tab === 'LBO' ? <LboTab a={a} /> : null}
-        {tab === 'Comps' ? <CompsTab a={a} /> : null}
         {tab === 'Precedents' ? <PrecedentsTab a={a} /> : null}
         {tab === 'Combined' ? <CombinedTab a={a} /> : null}
         <Assumptions />
@@ -176,10 +165,26 @@ function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
         </ul>
       </section>
 
-      <Panel title="What the target is worth" aside={<span>Enterprise value, cash-free and debt-free</span>}>
-        <FootballField rows={a.field} offer={a.offerEv} asking={a.askingPrice} />
+      <Panel
+        title="What the target is worth, and what to pay"
+        aside={<span>Enterprise value, cash-free and debt-free</span>}
+      >
+        <FootballField
+          rows={a.field}
+          offer={a.offerEv}
+          asking={a.askingPrice}
+          prices={a.scenarios
+            .filter((s) => s.id !== 'offer')
+            .map((s) => ({
+              id: s.id,
+              name: s.name.replace(' deal', ''),
+              value: s.price,
+              color: s.id === 'good' ? '#14845e' : s.id === 'bad' ? '#b4432e' : '#8a978f',
+            }))}
+        />
         <p className="mt-2 text-xs leading-5 text-faint">
-          Gold bars value the target on its own. The blue bar adds the synergies only you can create.
+          Gold bars value the target on its own. The blue bar adds the synergies only you can create. The
+          good, average and bad prices average the gold bars’ low ends, middles and high ends.
         </p>
       </Panel>
 

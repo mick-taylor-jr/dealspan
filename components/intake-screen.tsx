@@ -6,7 +6,6 @@ import { BareMoney, Choice, MoneyInput, NumberInput, SelectInput, TextInput } fr
 import { useWorkspace } from '@/components/workspace';
 import { DEMO_STORIES } from '@/lib/demo';
 import { usd } from '@/lib/format';
-import { subsectorsFor } from '@/lib/comps';
 import { INDUSTRIES } from '@/lib/industries';
 import { num, YEARS, type CompanyInput, type Intake, type SynergyInput } from '@/lib/types';
 
@@ -41,13 +40,6 @@ export function IntakeScreen() {
             missing={targetMissing}
             onChange={(company) => update((prev) => ({ ...prev, target: { ...prev.target, ...company } }))}
           >
-            <TextInput
-              label="Type of work"
-              value={intake.target.subsector}
-              suggestions={subsectorsFor(intake.target.industry)}
-              onChange={(subsector) => update((p) => ({ ...p, target: { ...p.target, subsector } }))}
-              hint="Pick from the list to match sold businesses of the same kind, or type your own."
-            />
             <div className="grid gap-4 sm:grid-cols-3">
               <MoneyInput
                 label="EBITDA the seller claims"
@@ -102,8 +94,8 @@ function Hero({ onDemo, demo }: { onDemo: () => void; demo: boolean }) {
             Two companies in. A price you can defend out.
           </h1>
           <p className="max-w-lg text-base leading-7 text-white/75">
-            Enter your company and the one you want to buy. Dealspan builds the DCF, LBO, comps and precedents
-            on the target, then shows what the two are worth together and whether the fit is real.
+            Enter your company and the one you want to buy. Dealspan builds the DCF, LBO and precedents on the
+            target, then shows what the two are worth together and whether the fit is real.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -149,9 +141,9 @@ function DealDiagram({ demo }: { demo: boolean }) {
         </div>
       </div>
       <div className="rounded-xl border border-white/15 bg-white/[0.07] p-4 text-sm leading-6 text-white/80">
-        <span className="font-semibold text-white">You get:</span> a valuation range from four methods, an LBO
-        with debt paydown, synergies after haircuts, the combined company, and a fit scorecard with questions
-        for the seller.
+        <span className="font-semibold text-white">You get:</span> good, average and bad prices, financing for
+        each, an LBO with debt paydown, synergies after haircuts, the combined company, and a fit scorecard
+        with questions for the seller.
       </div>
       {demo ? (
         <p className="text-xs leading-5 text-white/55">
@@ -368,15 +360,6 @@ function DealSection({
             { value: 'strategic', label: 'A company adding a business' },
             { value: 'financial', label: 'Investor or search fund' },
             { value: 'individual', label: 'First-time buyer' },
-          ]}
-        />
-        <Choice
-          label="Will part of the price depend on future results (an earnout)?"
-          value={d.earnout}
-          onChange={(v) => update((p) => ({ ...p, deal: { ...p.deal, earnout: v } }))}
-          options={[
-            { value: 'yes', label: 'Yes' },
-            { value: 'no', label: 'No' },
           ]}
         />
       </div>

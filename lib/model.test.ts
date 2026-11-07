@@ -33,8 +33,12 @@ test('demo intake is complete and runs every model', () => {
   assert.ok(a.earningsGap);
   close(a.earningsGap.gap, 79_000);
   close(a.earningsGap.overpay, 221_200);
-  assert.equal(a.comps.count, 3);
-  assert.equal(a.field.length, 5);
+  assert.equal(a.field.length, 4);
+  const [offer, good, average, bad] = a.scenarios;
+  assert.equal(offer.price, a.offerEv);
+  assert.ok(good.price < average.price && average.price < bad.price);
+  for (const s of a.scenarios)
+    close(s.financing.recommendedLoan + s.financing.buyerCash, s.financing.projectCost, 1e-6);
   assert.ok(a.lbo.irr != null && a.lbo.irr > 0);
 });
 
