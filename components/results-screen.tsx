@@ -34,7 +34,7 @@ export function ResultsScreen() {
           deal.
         </p>
         <Link
-          href="/"
+          href="/deal"
           className="inline-flex h-11 items-center rounded-full bg-pine px-5 text-sm font-semibold text-white"
         >
           Go to the intake
@@ -92,7 +92,7 @@ function Tombstone({ a, intake }: { a: Analysis; intake: Intake }) {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-10 sm:px-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="tombstone-in flex flex-col gap-4">
           <div className="flex items-center gap-4 text-sm">
-            <Link href="/" className="text-white/70 underline underline-offset-4 hover:text-white">
+            <Link href="/deal" className="text-white/70 underline underline-offset-4 hover:text-white">
               Edit inputs
             </Link>
             {intake.demo ? (
@@ -102,7 +102,7 @@ function Tombstone({ a, intake }: { a: Analysis; intake: Intake }) {
             ) : null}
           </div>
           <h1 className="max-w-3xl text-3xl leading-tight font-semibold tracking-[-0.02em] text-balance sm:text-4xl">
-            <span className="text-[#7fdcb4]">{a.buyer.name}</span>{' '}
+            <span className="text-[#9dbcf0]">{a.buyer.name}</span>{' '}
             <span className="font-normal text-white/60">acquiring</span>{' '}
             <span className="text-[#f0c66b]">{a.target.name}</span>
           </h1>
@@ -146,7 +146,7 @@ function Tombstone({ a, intake }: { a: Analysis; intake: Intake }) {
 
 function Overview({ a, go, ai }: { a: Analysis; go: (tab: Tab) => void; ai: AiState }) {
   const toneStyle = {
-    good: 'border-buyer/30 bg-buyer-soft',
+    good: 'border-ok/30 bg-ok-soft',
     caution: 'border-warn/30 bg-warn-soft',
     risk: 'border-risk/30 bg-risk-soft',
   }[a.verdict.tone];
@@ -184,7 +184,7 @@ function Overview({ a, go, ai }: { a: Analysis; go: (tab: Tab) => void; ai: AiSt
               id: s.id,
               name: s.name.replace(' deal', ''),
               value: s.price,
-              color: s.id === 'good' ? '#14845e' : s.id === 'bad' ? '#b4432e' : '#8a978f',
+              color: s.id === 'good' ? '#16835d' : s.id === 'bad' ? '#d62839' : '#718096',
             }))}
         />
         <p className="mt-2 text-xs leading-5 text-faint">
@@ -287,8 +287,8 @@ function Overview({ a, go, ai }: { a: Analysis; go: (tab: Tab) => void; ai: AiSt
 
 function FitTab({ a, intake }: { a: Analysis; intake: Intake }) {
   const toneCls = {
-    strength: 'bg-buyer-soft text-[#0e6145]',
-    neutral: 'bg-[#eef1ee] text-muted',
+    strength: 'bg-ok-soft text-[#0e6145]',
+    neutral: 'bg-[#eef1f5] text-muted',
     risk: 'bg-risk-soft text-risk',
   };
   const toneWord = { strength: 'Strength', neutral: 'Watch', risk: 'Risk' };

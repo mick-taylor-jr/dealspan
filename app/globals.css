@@ -1,28 +1,36 @@
 @import 'tailwindcss';
 
+/* DealSpan design (Ben): navy and red, Inter, square corners. Chart identity colors are validated for color blindness:
+   buyer #2E5AAC, target #C98A1E, synergies #4FA3D9. Red is the brand accent and the "risk" status color. */
 @theme inline {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-sans: Inter, Arial, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, monospace;
 
-  --color-paper: #f4f6f3;
+  --color-paper: #ffffff;
   --color-card: #ffffff;
-  --color-ink: #17201c;
-  --color-muted: #5b6b63;
-  --color-faint: #8a978f;
-  --color-line: #dde3de;
-  --color-pine: #0f3b2e;
-  --color-pine-2: #164c3c;
-  --color-buyer: #14845e;
-  --color-buyer-soft: #e3f1ea;
-  --color-target: #b07a10;
-  --color-target-soft: #f6eedb;
-  --color-syn: #3d7dc4;
-  --color-syn-soft: #e5eef8;
-  --color-risk: #b4432e;
-  --color-risk-soft: #f8e7e2;
-  --color-ok: #14845e;
+  --color-ink: #14213d;
+  --color-muted: #526078;
+  --color-faint: #718096;
+  --color-line: #dce1e8;
+  --color-pine: #14213d;
+  --color-pine-2: #22345a;
+  --color-signal: #d62839;
+  --color-buyer: #2e5aac;
+  --color-buyer-soft: #e8eef8;
+  --color-target: #c98a1e;
+  --color-target-soft: #f8efdf;
+  --color-syn: #4fa3d9;
+  --color-syn-soft: #e6f2fa;
+  --color-risk: #d62839;
+  --color-risk-soft: #fbecee;
+  --color-ok: #16835d;
+  --color-ok-soft: #e3f2ec;
   --color-warn: #a86a00;
   --color-warn-soft: #fbf0d9;
+}
+
+* {
+  border-radius: 0 !important;
 }
 
 body {
@@ -33,7 +41,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-syn);
+  outline: 2px solid #d62839;
   outline-offset: 2px;
 }
 
@@ -41,6 +49,65 @@ input,
 select,
 textarea {
   font-variant-numeric: tabular-nums;
+}
+
+.print-report {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 16mm;
+  }
+  body {
+    color: #14213d !important;
+    background: #fff !important;
+    font-size: 10pt;
+  }
+  .no-print,
+  header,
+  footer,
+  button,
+  nav,
+  .sticky,
+  main > div:not(.print-report) {
+    display: none !important;
+  }
+  .print-report {
+    display: block !important;
+  }
+  .print-report h1 {
+    font-size: 24pt;
+    margin: 0 0 4pt;
+  }
+  .print-report h2 {
+    font-size: 16pt;
+    margin: 24pt 0 8pt;
+    border-bottom: 1px solid #dce1e8;
+    padding-bottom: 4pt;
+    break-after: avoid;
+  }
+  .print-report section {
+    break-inside: avoid;
+  }
+  .print-report table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .print-report th,
+  .print-report td {
+    text-align: left;
+    border-bottom: 1px solid #dce1e8;
+    padding: 5pt;
+    vertical-align: top;
+  }
+  .print-report th {
+    width: 36%;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
