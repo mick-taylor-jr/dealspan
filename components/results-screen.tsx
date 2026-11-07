@@ -1,370 +1,912 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { QuietMoney, Tag } from '@/components/quiet';
+import { useState, type ReactNode } from 'react';
+import { Columns, FootballField, StackedColumns } from '@/components/charts';
+import { COLORS, Panel, Prov, Stat, Swatch } from '@/components/ui';
 import { useWorkspace } from '@/components/workspace';
-import { MODEL_ASSUMPTIONS } from '@/lib/case';
-import { formatCents } from '@/lib/money';
-import { isIndustry } from '@/lib/industries';
-import { CITED_DEALS, THIN_SET_NOTE } from '@/lib/precedents';
+import { ASSUMPTION_NOTES, ASSUMPTIONS } from '@/lib/assumptions';
+import { DEMO_STORIES } from '@/lib/demo';
+import { pct, times, usd, usdShort } from '@/lib/format';
+import { DAMODARAN_SOURCE } from '@/lib/industries';
+import type { Analysis } from '@/lib/model';
+import { THIN_SET_NOTE, type CitedDeal } from '@/lib/precedents';
+import type { Intake } from '@/lib/types';
 
-const TABS = ['Overview', 'Comps', 'Precedents', 'DCF', 'LBO', 'Synergies'] as const;
+const TABS = ['Overview', 'Fit', 'Synergies', 'DCF', 'LBO', 'Comps', 'Precedents', 'Combined'] as const;
 type Tab = (typeof TABS)[number];
 
 export function ResultsScreen() {
-  const { caseFile } = useWorkspace();
+  const { analysis, intake, ready, missing } = useWorkspace();
   const [tab, setTab] = useState<Tab>('Overview');
-  if (!caseFile) {
+  if (!ready) return <div className="min-h-[60vh]" />;
+  if (!analysis) {
     return (
-      <div className="mx-auto max-w-md px-6 py-24 text-sm text-stone-600">
-        No companies yet.{' '}
-        <Link className="underline" href="/">
-          Start
+      <div className="mx-auto flex max-w-lg flex-col items-start gap-4 px-6 py-24">
+        <h1 className="text-2xl font-semibold tracking-tight">Nothing to analyze yet</h1>
+        <p className="text-sm leading-6 text-muted">
+          {missing.length} fields are still empty. Fill in both companies and the deal terms, or load the demo deal.
+        </p>
+        <Link href="/" className="inline-flex h-11 items-center rounded-full bg-pine px-5 text-sm font-semibold text-white">
+          Go to the intake
         </Link>
       </div>
     );
   }
-  const { intake } = caseFile;
+  const a = analysis;
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 py-12">
-      <header className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{intake.targetName}</h1>
-          <p className="mt-1 text-sm text-stone-500">
-            {intake.exampleId ? 'Hypothetical · ' : ''}
-            {intake.buyerName} · {intake.claimPeriod}
-          </p>
-        </div>
-        <Link href="/" className="text-sm text-stone-500 underline">
-          Edit
-        </Link>
-      </header>
-      <nav className="flex gap-5 overflow-x-auto border-b border-stone-200">
-        {TABS.map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setTab(item)}
-            className={
-              tab === item
-                ? 'border-b-2 border-stone-900 pb-3 text-sm font-medium'
-                : 'pb-3 text-sm text-stone-500'
-            }
-          >
-            {item}
-          </button>
-        ))}
-      </nav>
-      {tab === 'Overview' ? <Overview /> : null}
-      {tab === 'Comps' ? <Comps /> : null}
-      {tab === 'Precedents' ? <Precedents /> : null}
-      {tab === 'DCF' ? <DcfTab /> : null}
-      {tab === 'LBO' ? <LboTab /> : null}
-      {tab === 'Synergies' ? <SynergyTab /> : null}
+    <div className="pb-16">
+      <Tombstone a={a} intake={intake} />
+      <div className="sticky top-0 z-20 border-b border-line bg-paper/95 backdrop-blur">
+        <nav className="mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto px-5 sm:px-8" aria-label="Analysis sections">
+          {TABS.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setTab(item)}
+              aria-current={tab === item ? 'page' : undefined}
+              className={`relative shrink-0 px-3 py-3.5 text-sm ${
+                tab === item ? 'font-semibold text-ink' : 'text-muted hover:text-ink'
+              }`}
+            >
+              {item}
+              {tab === item ? <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-pine" /> : null}
+            </button>
+          ))}
+        </nav>
+      </div>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 pt-8 sm:px-8">
+        {tab === 'Overview' ? <Overview a={a} go={setTab} /> : null}
+        {tab === 'Fit' ? <FitTab a={a} intake={intake} /> : null}
+        {tab === 'Synergies' ? <SynergyTab a={a} /> : null}
+        {tab === 'DCF' ? <DcfTab a={a} /> : null}
+        {tab === 'LBO' ? <LboTab a={a} /> : null}
+        {tab === 'Comps' ? <CompsTab a={a} /> : null}
+        {tab === 'Precedents' ? <PrecedentsTab a={a} /> : null}
+        {tab === 'Combined' ? <CombinedTab a={a} /> : null}
+        <Assumptions />
+      </div>
     </div>
   );
 }
 
-function Overview() {
-  const { caseFile } = useWorkspace();
-  if (!caseFile) return null;
+/* ---------- Header ---------- */
+
+function Tombstone({ a, intake }: { a: Analysis; intake: Intake }) {
   return (
-    <section className="flex flex-col gap-6">
-      <div>
-        <p className="text-sm text-stone-500">Pay</p>
-        <QuietMoney
-          cents={caseFile.payCents}
-          label="calculated"
-          source="Supported EBITDA × offer multiple"
-          size="lg"
-        />
-        <p className="mt-4 text-sm text-stone-500">
-          Ask{' '}
-          <QuietMoney cents={caseFile.askCents} label="calculated" source="Seller EBITDA × offer multiple" />
-        </p>
-        {caseFile.askCents > caseFile.payCents ? (
-          <p className="mt-2 text-sm text-stone-500">
-            <QuietMoney
-              cents={caseFile.askCents - caseFile.payCents}
-              label="calculated"
-              source="Ask minus supported price"
-            />{' '}
-            above supported EBITDA
+    <header className="bg-pine text-white">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-10 sm:px-8 lg:flex-row lg:items-end lg:justify-between">
+        <div className="tombstone-in flex flex-col gap-4">
+          <div className="flex items-center gap-4 text-sm">
+            <Link href="/" className="text-white/70 underline underline-offset-4 hover:text-white">
+              Edit inputs
+            </Link>
+            {intake.demo ? (
+              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/80">Hypothetical demo companies</span>
+            ) : null}
+          </div>
+          <h1 className="max-w-3xl text-3xl leading-tight font-semibold tracking-[-0.02em] text-balance sm:text-4xl">
+            <span className="text-[#7fdcb4]">{a.buyer.name}</span>{' '}
+            <span className="font-normal text-white/60">acquiring</span>{' '}
+            <span className="text-[#f0c66b]">{a.target.name}</span>
+          </h1>
+          <p className="text-sm text-white/65">
+            {a.target.industry}. {usdShort(a.target.revenue[2])} revenue and {usdShort(a.verifiedEbitda)} EBITDA in 2025.
           </p>
-        ) : null}
+        </div>
+        <div className="tombstone-in grid min-w-[18rem] grid-cols-2 gap-x-8 gap-y-4 rounded-2xl border border-white/15 bg-white/5 p-5 [animation-delay:120ms]">
+          <div>
+            <div className="text-xs text-white/60">Your offer</div>
+            <div className="text-2xl font-semibold tabular-nums">{usd(a.offerEv)}</div>
+            <div className="text-xs text-white/60">{times(a.deal.offerMultiple)} EBITDA</div>
+          </div>
+          <div>
+            <div className="text-xs text-white/60">Equity return</div>
+            <div className="text-2xl font-semibold tabular-nums">{a.lbo.irr != null ? pct(a.lbo.irr) : 'n/a'}</div>
+            <div className="text-xs text-white/60">{a.lbo.moic != null ? `${times(a.lbo.moic, 2)} your money` : ''} over {a.deal.holdYears} yrs</div>
+          </div>
+          <div>
+            <div className="text-xs text-white/60">Kept synergies</div>
+            <div className="text-lg font-semibold tabular-nums">{usdShort(a.synergies.runRate)}/yr</div>
+          </div>
+          <div>
+            <div className="text-xs text-white/60">Fit score</div>
+            <div className="text-lg font-semibold tabular-nums">{a.fit.answered ? `${a.fit.score} / 100` : 'Not answered'}</div>
+          </div>
+        </div>
       </div>
-      <p className="max-w-xl text-sm text-stone-600">{caseFile.fit.notes[caseFile.fit.notes.length - 1]}</p>
-      <details className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
-        <summary className="cursor-pointer text-sm">Earnings check</summary>
-        <div className="mt-4 flex flex-col gap-2">
-          {caseFile.deal?.lines.map((line) => (
-            <p key={line.id} className="flex justify-between gap-3 text-sm">
+    </header>
+  );
+}
+
+/* ---------- Overview ---------- */
+
+function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
+  const toneStyle = {
+    good: 'border-buyer/30 bg-buyer-soft',
+    caution: 'border-warn/30 bg-warn-soft',
+    risk: 'border-risk/30 bg-risk-soft',
+  }[a.verdict.tone];
+  const toneWord = { good: 'Looks sound', caution: 'Worth a closer look', risk: 'Red flags' }[a.verdict.tone];
+  return (
+    <>
+      <section className={`rounded-2xl border p-6 ${toneStyle}`}>
+        <div className="text-sm font-semibold">{toneWord}</div>
+        <p className="mt-1 text-xl font-semibold tracking-tight text-balance">{a.verdict.headline}</p>
+        <ul className="mt-3 flex flex-col gap-1.5 text-sm leading-6 text-ink/80">
+          {a.verdict.points.map((point) => (
+            <li key={point} className="flex gap-2">
+              <span aria-hidden className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-ink/50" />
+              {point}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <Panel title="What the target is worth, four ways" aside={<span>Enterprise value, cash-free and debt-free</span>}>
+        <FootballField rows={a.field} offer={a.offerEv} asking={a.askingPrice} />
+        <p className="mt-2 text-xs leading-5 text-faint">
+          Precedent deals are listed on their own tab. They disclose prices, not EBITDA, so they cannot be drawn as a
+          multiple range here.
+        </p>
+      </Panel>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Panel title="Why this deal">
+          <ul className="flex flex-col gap-2 text-sm leading-6">
+            {a.fit.thesis.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <button type="button" onClick={() => go('Fit')} className="mt-4 text-sm font-medium text-pine underline underline-offset-4">
+            See the fit scorecard
+          </button>
+        </Panel>
+        <Panel title="Synergies after haircuts">
+          <Stat label="Kept per year, once running" value={usd(a.synergies.runRate)} prov="calculated" emphasis />
+          <p className="mt-3 text-sm leading-6 text-muted">
+            Worth {usd(a.synergies.valueAtOffer)} at your {times(a.deal.offerMultiple)} multiple. Synergies are value you
+            create, so they should not be paid to the seller.
+          </p>
+          <button type="button" onClick={() => go('Synergies')} className="mt-4 text-sm font-medium text-pine underline underline-offset-4">
+            See every line
+          </button>
+        </Panel>
+        <Panel title="Can you pay for it">
+          <div className="grid grid-cols-2 gap-4">
+            <Stat label="Equity check" value={usdShort(a.proForma.equityNeeded)} prov="calculated" />
+            <Stat
+              label="Your cash after"
+              value={<span className={a.proForma.cashLeft < 0 ? 'text-risk' : ''}>{usdShort(a.proForma.cashLeft)}</span>}
+              prov="calculated"
+            />
+            <Stat label="Lowest debt coverage" value={times(a.lbo.minDscr, 2)} note="SBA wants 1.25×+" />
+            <Stat label="Combined debt / EBITDA" value={times(a.proForma.leverageAtClose, 2)} note="At close" />
+          </div>
+        </Panel>
+      </div>
+
+      {a.earningsGap ? (
+        <Panel title="Earnings check">
+          <div className="grid gap-6 sm:grid-cols-4">
+            <Stat label="Seller claims" value={usd(a.sellerEbitda!)} prov="user-entered" />
+            <Stat label="Documents support" value={usd(a.verifiedEbitda)} prov="user-entered" />
+            <Stat label="Gap" value={usd(a.earningsGap.gap)} prov="calculated" />
+            <Stat
+              label={`Overpay at ${times(a.deal.offerMultiple)}`}
+              value={<span className="text-risk">{usd(a.earningsGap.overpay)}</span>}
+              prov="calculated"
+            />
+          </div>
+          <p className="mt-4 text-sm leading-6 text-muted">
+            Every model on this page uses the {usd(a.verifiedEbitda)} you can support, not the seller’s number.
+          </p>
+        </Panel>
+      ) : null}
+    </>
+  );
+}
+
+/* ---------- Fit ---------- */
+
+function FitTab({ a, intake }: { a: Analysis; intake: Intake }) {
+  const toneCls = {
+    strength: 'bg-buyer-soft text-[#0e6145]',
+    neutral: 'bg-[#eef1ee] text-muted',
+    risk: 'bg-risk-soft text-risk',
+  };
+  const toneWord = { strength: 'Strength', neutral: 'Watch', risk: 'Risk' };
+  return (
+    <>
+      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+        <ProfileCard role="buyer" name={a.buyer.name} c={intake.buyer} story={intake.demo ? DEMO_STORIES.buyer : undefined} />
+        <ProfileCard role="target" name={a.target.name} c={intake.target} story={intake.demo ? DEMO_STORIES.target : undefined} />
+      </div>
+      <Panel
+        title="Fit scorecard"
+        aside={
+          a.fit.answered ? (
+            <span>
+              <span className="text-lg font-semibold text-ink tabular-nums">{a.fit.score}</span> / 100 from {a.fit.answered} factors
+            </span>
+          ) : (
+            'Answer the fit questions on the intake to score this.'
+          )
+        }
+      >
+        <div className="divide-y divide-line">
+          {a.fit.factors.map((factor) => (
+            <div key={factor.id} className="grid gap-2 py-3 sm:grid-cols-[13rem_7rem_1fr] sm:items-baseline">
+              <span className="text-sm font-medium">{factor.name}</span>
               <span>
-                {line.description}{' '}
-                <span className="text-stone-400">
-                  {line.classification === 'accepted' ? 'Accepted' : 'Rejected'}
-                </span>
+                <span className={`rounded px-2 py-0.5 text-xs font-medium ${toneCls[factor.tone]}`}>{toneWord[factor.tone]}</span>
               </span>
-              <QuietMoney cents={line.managementCents} label="user-entered" source={line.rationale} />
-            </p>
+              <span className="text-sm leading-6 text-muted">
+                <span className="font-medium text-ink">{factor.answer}.</span> {factor.why}
+              </span>
+            </div>
           ))}
         </div>
-      </details>
+      </Panel>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel title="Why this deal">
+          <ul className="flex list-disc flex-col gap-2 pl-5 text-sm leading-6">
+            {a.fit.thesis.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </Panel>
+        <Panel title="Questions for the seller">
+          {a.fit.questions.length ? (
+            <ol className="flex list-decimal flex-col gap-2 pl-5 text-sm leading-6">
+              {a.fit.questions.map((q) => (
+                <li key={q}>{q}</li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-sm text-muted">No open risks from your answers.</p>
+          )}
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+function ProfileCard({
+  role,
+  name,
+  c,
+  story,
+}: {
+  role: 'buyer' | 'target';
+  name: string;
+  c: Intake['buyer'];
+  story?: string;
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-line bg-card">
+      <div className={`h-1.5 ${role === 'buyer' ? 'bg-buyer' : 'bg-target'}`} />
+      <div className="p-6">
+        <div className="text-xs text-muted">{role === 'buyer' ? 'Your company' : 'Target'}</div>
+        <h3 className="text-lg font-semibold">{name}</h3>
+        <p className="mt-2 text-sm leading-6 text-ink/80">{story ?? c.description}</p>
+        <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+          <Def k="Industry" v={c.industry} />
+          <Def k="Where" v={c.location} />
+          <Def k="Customers" v={c.customers} />
+          <Def k="Employees" v={c.employees} />
+        </dl>
+      </div>
     </section>
   );
 }
 
-function Comps() {
+function Def({ k, v }: { k: string; v: string }) {
   return (
-    <section className="flex max-w-xl flex-col gap-3 text-sm text-stone-600">
-      <p>No confirmed peers. The set is thin.</p>
-      <p>
-        Size discount {MODEL_ASSUMPTIONS.discountLowBps / 100}–{MODEL_ASSUMPTIONS.discountHighBps / 100}%{' '}
-        <Tag label="assumed" />
-      </p>
-      <p>No public benchmark was entered, so a raw multiple is not applied.</p>
-    </section>
+    <div>
+      <dt className="text-xs text-faint">{k}</dt>
+      <dd>{v || '—'}</dd>
+    </div>
   );
 }
 
-function Precedents() {
-  const { caseFile } = useWorkspace();
-  if (!caseFile || !isIndustry(caseFile.intake.industry)) return null;
-  const rows = CITED_DEALS.filter((deal) => deal.industry === caseFile.intake.industry);
-  const landscaping = /landscap/i.test(
-    `${caseFile.intake.targetDescription} ${caseFile.intake.buyerDescription}`,
-  );
-  return (
-    <section className="flex flex-col gap-4">
-      <p className="text-sm text-stone-500">{THIN_SET_NOTE}</p>
-      {landscaping ? (
-        <p className="text-sm text-stone-500">The cited set has no landscaping closings.</p>
-      ) : null}
-      <ul>
-        {rows.map((deal) => (
-          <li key={deal.citation} className="border-t border-stone-200 py-4 text-sm">
-            <p className="font-medium">
-              {deal.acquirer} · {deal.target}
-            </p>
-            <p className="text-stone-500">
-              {deal.date} · {deal.disclosed}
-            </p>
-            <a className="text-stone-500 underline" href={deal.citation} target="_blank" rel="noreferrer">
-              Source
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
+/* ---------- Synergies ---------- */
 
-function DcfTab() {
-  const { caseFile } = useWorkspace();
-  if (!caseFile) return null;
-  const { dcf, debt, cash } = caseFile;
+function SynergyTab({ a }: { a: Analysis }) {
+  const s = a.synergies;
+  const premium = a.offerEv - (a.dcf.gordon?.ev ?? a.dcf.exit.ev);
   return (
-    <section className="flex flex-col gap-6">
-      <div>
-        <p className="text-sm text-stone-500">Gordon equity</p>
-        {dcf.gordonEquityCents != null ? (
-          <QuietMoney
-            cents={wholeDollars(dcf.gordonEquityCents)}
-            label="calculated"
-            source="FCFF and Gordon terminal value, minus net debt"
-            size="lg"
+    <>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <Panel>
+          <Stat label="Kept per year, once running" value={usd(s.runRate)} prov="calculated" emphasis />
+        </Panel>
+        <Panel>
+          <Stat label={`Value at your ${times(a.deal.offerMultiple)}`} value={usd(s.valueAtOffer)} prov="calculated" emphasis />
+        </Panel>
+        <Panel>
+          <Stat label="One-time cost to combine" value={usd(s.integrationCost)} prov="user-entered" emphasis />
+        </Panel>
+        <Panel>
+          <Stat
+            label="Premium over standalone DCF"
+            value={<span className={premium > 0 ? 'text-risk' : ''}>{usd(premium)}</span>}
+            prov="calculated"
+            note={premium > 0 ? 'You are paying for value you create' : 'You are not paying for synergies'}
+            emphasis
           />
+        </Panel>
+      </div>
+      <Panel title="Every synergy, before and after the haircut">
+        {s.lines.length === 0 ? (
+          <p className="text-sm text-muted">No synergies were entered.</p>
         ) : (
-          <p className="text-3xl text-stone-300">—</p>
-        )}
-        <p className="mt-3 text-sm text-stone-500">
-          Exit equity{' '}
-          <QuietMoney
-            cents={wholeDollars(dcf.exitEquityCents)}
-            label="calculated"
-            source="Year-5 EBITDA × 6.0×, minus net debt"
+          <Table
+            head={['Synergy', 'Type', 'You entered', 'EBITDA impact', 'Kept']}
+            rows={s.lines.map((line) => [
+              line.description,
+              line.kind === 'cost' ? 'Cost saving' : 'New revenue',
+              usd(line.stated),
+              usd(line.ebitdaImpact),
+              <span key="k" className="font-semibold">
+                {usd(line.kept)}
+              </span>,
+            ])}
+            foot={['Total', '', '', usd(s.lines.reduce((x, l) => x + l.ebitdaImpact, 0)), usd(s.runRate)]}
           />
+        )}
+        <p className="mt-4 text-sm leading-6 text-muted">
+          Cost savings keep {pct(ASSUMPTIONS.costSynergyRetained, 0)}. New revenue counts at a{' '}
+          {pct(ASSUMPTIONS.revenueSynergyMargin, 0)} margin, then keeps {pct(ASSUMPTIONS.revenueSynergyRetained, 0)}. Half
+          shows up in year one. All three are labeled assumptions.
         </p>
-      </div>
-      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-        <Fact label="Risk-free" value="4.0%" tag="assumed" />
-        <Fact label="Beta" value="1.00" tag="assumed" />
-        <Fact label="ERP" value="5.0%" tag="assumed" />
-        <Fact label="Size" value="5.0%" tag="assumed" />
-        <Fact label="Company" value="2.0%" tag="assumed" />
-        <Fact label="Tax" value="21%" tag="assumed" />
-        <Fact label="Debt weight" value="25%" tag="assumed" />
-        <Fact label="WACC" value={`${(dcf.waccBps / 100).toFixed(1)}%`} tag="calculated" />
-        <Fact label="Terminal g" value="2.5%" tag="assumed" />
-      </dl>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="text-xs text-stone-400">
-              <th className="py-1 pr-3 font-medium">Year</th>
-              <th className="py-1 pr-3 font-medium">EBITDA</th>
-              <th className="py-1 font-medium">FCFF</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dcf.years.map((year, index) => (
-              <tr key={index} className="border-t border-stone-100">
-                <td className="py-1 pr-3">{index + 1}</td>
-                <td className="py-1 pr-3 tabular-nums">{formatCents(wholeDollars(year.ebitdaCents))}</td>
-                <td className="py-1 tabular-nums">{formatCents(wholeDollars(year.fcffCents))}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-sm text-stone-500">
-        Debt <QuietMoney cents={debt.cents} label={debt.label} source="Target interest-bearing debt" /> · Cash{' '}
-        <QuietMoney cents={cash.cents} label={cash.label} source="Target cash" />
-      </p>
-      <p className="text-sm text-stone-500">
-        {dcf.methodsReconcile
-          ? 'Gordon growth and the 6.0× exit can both be read. They are not blended.'
-          : 'Gordon growth and the 6.0× exit do not economically reconcile. They are not blended.'}
-      </p>
-      {caseFile.dcf.envelope ? (
-        <p className="text-sm text-stone-500">
-          Grid {formatCents(wholeDollars(caseFile.dcf.envelope.lowCents))}–
-          {formatCents(wholeDollars(caseFile.dcf.envelope.highCents))} <Tag label="calculated" />
-        </p>
-      ) : null}
-      <div className="overflow-x-auto">
-        <table className="w-full text-right text-xs tabular-nums">
-          <tbody>
-            {dcf.grid.map((row, rowIndex) => (
-              <tr key={rowIndex}>
-                {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} className="border border-stone-100 px-2 py-1 text-stone-600">
-                    {cell.invalid || cell.equityCents == null ? '—' : shortMoney(cell.equityCents)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+      </Panel>
+      <Panel title="Synergies by year">
+        <Columns labels={s.byYear.slice(0, 5).map((_, i) => String(2026 + i))} values={s.byYear.slice(0, 5)} color={COLORS.syn} />
+      </Panel>
+    </>
   );
 }
 
-function LboTab() {
-  const { caseFile } = useWorkspace();
-  if (!caseFile) return null;
-  const { lbo } = caseFile;
+/* ---------- DCF ---------- */
+
+function DcfTab({ a }: { a: Analysis }) {
+  const d = a.dcf;
   return (
-    <section className="flex flex-col gap-6">
-      <div>
-        <p className="text-sm text-stone-500">MOIC</p>
-        <p className="text-5xl font-semibold tracking-tight tabular-nums">
-          {(lbo.moicThousandths / 1000).toFixed(2)}× <Tag label="calculated" />
-        </p>
-        <p className="mt-3 text-sm text-stone-500">
-          IRR {lbo.irrBps == null ? '—' : `${(lbo.irrBps / 100).toFixed(1)}%`} <Tag label="calculated" />
-        </p>
-      </div>
-      <div className="grid gap-4 text-sm sm:grid-cols-2">
-        <p>
-          Price{' '}
-          <QuietMoney cents={lbo.priceCents} label="calculated" source="Supported EBITDA × offer multiple" />
-        </p>
-        <p>
-          Debt{' '}
-          <QuietMoney
-            cents={lbo.debtCents}
-            label={caseFile.debt.label}
-            source="Target interest-bearing debt"
+    <>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <Panel>
+          <Stat label="Value, perpetuity growth" value={d.gordon ? usd(d.gordon.ev) : 'n/a'} prov="calculated" emphasis />
+        </Panel>
+        <Panel>
+          <Stat label={`Value, ${times(a.deal.exitMultiple)} exit`} value={usd(d.exit.ev)} prov="calculated" emphasis />
+        </Panel>
+        <Panel>
+          <Stat
+            label="Discount rate (WACC)"
+            value={pct(d.wacc)}
+            prov="calculated"
+            note={`Cost of equity ${pct(d.costOfEquity)}`}
+            emphasis
           />
-        </p>
-        <p>
-          Equity <QuietMoney cents={lbo.equityCents} label="calculated" source="Price minus debt" />
-        </p>
-        <p className="text-stone-500">
-          Rate 10%, amort 10 years, hold 5 years, exit 6.0×, tax 21% <Tag label="assumed" />
-        </p>
+        </Panel>
+        <Panel>
+          <Stat
+            label="Equity value"
+            value={d.gordon ? usd(d.gordon.equity) : usd(d.exit.equity)}
+            prov="calculated"
+            note="After target debt, plus cash"
+            emphasis
+          />
+        </Panel>
       </div>
-      <table className="w-full text-left text-sm">
+      <Panel title="Five-year free cash flow" aside={`${a.target.name}, standalone, no synergies`}>
+        <ProjectionTable a={a} rows={d.rows} />
+      </Panel>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel title="Sensitivity: value by WACC and growth">
+          <Grid
+            colHead={d.grid.waccs.map((w) => pct(w))}
+            rowHead={d.grid.growths.map((g) => pct(g))}
+            cells={d.grid.ev.map((row) => row.map((v) => (v == null ? '—' : usdShort(v))))}
+            center={[2, 2]}
+            corner="g \\ WACC"
+          />
+        </Panel>
+        <Panel title="How the two methods compare">
+          <dl className="flex flex-col gap-3 text-sm">
+            <Row k="Present value of 5 years of cash flow" v={usd(d.pvFcf)} />
+            {d.gordon ? <Row k="Present value of terminal value (growth)" v={usd(d.gordon.pvTv)} /> : null}
+            {d.gordon ? <Row k="Terminal value share of total" v={pct(d.gordon.tvShare, 0)} /> : null}
+            <Row k="Present value of terminal value (exit multiple)" v={usd(d.exit.pvTv)} />
+            <Row k="Growth rate the exit multiple implies" v={pct(d.exit.impliedGrowth)} />
+          </dl>
+          <p className="mt-4 text-xs leading-5 text-faint">
+            Growth, margins, D&A, capex and working capital all come from the target’s inputs. Tax is{' '}
+            {pct(ASSUMPTIONS.taxRate, 0)}.
+          </p>
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+function ProjectionTable({ a, rows }: { a: Analysis; rows: Analysis['dcf']['rows'] }) {
+  const t = a.target;
+  const lines: Array<[string, (r: (typeof rows)[number]) => number, string?]> = [
+    ['Revenue', (r) => r.revenue],
+    ['EBITDA', (r) => r.ebitda, 'font-semibold'],
+    ['Less D&A', (r) => -r.da],
+    ['EBIT', (r) => r.ebit],
+    ['Less tax at 21%', (r) => -r.taxes],
+    ['Plus D&A', (r) => r.da],
+    ['Less capex', (r) => -r.capex],
+    ['Less change in working capital', (r) => -r.deltaNwc],
+    ['Free cash flow', (r) => r.ufcf, 'font-semibold'],
+  ];
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[640px] text-sm tabular-nums">
         <thead>
-          <tr className="text-xs text-stone-400">
-            <th className="py-1 font-medium">Year</th>
-            <th className="py-1 font-medium">Open</th>
-            <th className="py-1 font-medium">Interest</th>
-            <th className="py-1 font-medium">Paydown</th>
-            <th className="py-1 font-medium">Close</th>
+          <tr className="border-b border-line text-xs text-faint">
+            <th className="py-2 text-left font-normal" />
+            <th className="py-2 text-right font-medium">2025 actual</th>
+            {rows.map((r) => (
+              <th key={r.year} className="py-2 text-right font-medium">
+                {r.year}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {lbo.schedule.map((year) => (
-            <tr key={year.year} className="border-t border-stone-100 tabular-nums">
-              <td className="py-1">{year.year}</td>
-              <td>{formatCents(year.openCents)}</td>
-              <td>{formatCents(year.interestCents)}</td>
-              <td>{formatCents(year.paydownCents)}</td>
-              <td>{formatCents(year.closeCents)}</td>
+          {lines.map(([name, get, cls]) => (
+            <tr key={name} className={`border-b border-line/60 ${cls ?? ''}`}>
+              <td className="py-2 pr-4 text-left">{name}</td>
+              <td className="py-2 text-right text-muted">
+                {name === 'Revenue' ? usd(t.revenue[2]) : name === 'EBITDA' ? usd(t.ebitda[2]) : ''}
+              </td>
+              {rows.map((r) => (
+                <td key={r.year} className="py-2 text-right">
+                  {usd(get(r))}
+                </td>
+              ))}
+            </tr>
+          ))}
+          <tr className="text-xs text-faint">
+            <td className="py-2">EBITDA margin</td>
+            <td className="py-2 text-right">{pct(t.ebitda[2] / t.revenue[2])}</td>
+            {rows.map((r) => (
+              <td key={r.year} className="py-2 text-right">
+                {pct(r.margin)}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ---------- LBO ---------- */
+
+function LboTab({ a }: { a: Analysis }) {
+  const l = a.lbo;
+  return (
+    <>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <Panel>
+          <Stat label="Return on equity (IRR)" value={l.irr != null ? pct(l.irr) : 'n/a'} prov="calculated" emphasis />
+        </Panel>
+        <Panel>
+          <Stat label="Money multiple" value={l.moic != null ? times(l.moic, 2) : 'n/a'} prov="calculated" emphasis />
+        </Panel>
+        <Panel>
+          <Stat
+            label={`Most you can pay for ${pct(a.deal.targetIrr, 0)}`}
+            value={l.maxMultipleAtTarget != null ? usd(l.maxMultipleAtTarget * a.verifiedEbitda) : 'n/a'}
+            note={l.maxMultipleAtTarget != null ? `${times(l.maxMultipleAtTarget)} EBITDA` : undefined}
+            prov="calculated"
+            emphasis
+          />
+        </Panel>
+        <Panel>
+          <Stat
+            label="Lowest debt coverage"
+            value={<span className={l.minDscr < 1.25 ? 'text-risk' : ''}>{times(l.minDscr, 2)}</span>}
+            note="Cash flow before debt ÷ interest + required principal"
+            prov="calculated"
+            emphasis
+          />
+        </Panel>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel title="Sources and uses">
+          <div className="grid grid-cols-2 gap-6">
+            <SU title="Sources" items={l.sources} />
+            <SU title="Uses" items={l.uses} />
+          </div>
+        </Panel>
+        <Panel title="Debt left at year end">
+          <Columns
+            labels={['Close', ...l.years.map((y) => String(y.year))]}
+            values={[l.debt, ...l.years.map((y) => y.closingDebt)]}
+            color={COLORS.target}
+          />
+        </Panel>
+      </div>
+      <Panel title="Cash flow and debt paydown" aside="All free cash goes to paying down debt">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm tabular-nums">
+            <thead>
+              <tr className="border-b border-line text-xs text-faint">
+                <th className="py-2 text-left font-normal" />
+                {l.years.map((y) => (
+                  <th key={y.year} className="py-2 text-right font-medium">
+                    {y.year}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(
+                [
+                  ['EBITDA', (y) => y.ebitda],
+                  ['Less interest', (y) => -y.interest],
+                  ['Less tax at 21%', (y) => -y.taxes],
+                  ['Less capex', (y) => -y.capex],
+                  ['Less change in working capital', (y) => -y.deltaNwc],
+                  ['Free cash flow to equity', (y) => y.fcf],
+                  ['Debt paid down', (y) => y.paydown],
+                  ['Debt at year end', (y) => y.closingDebt],
+                ] as Array<[string, (y: Analysis['lbo']['years'][number]) => number]>
+              ).map(([name, get]) => (
+                <tr key={name} className="border-b border-line/60">
+                  <td className="py-2 pr-4">{name}</td>
+                  {l.years.map((y) => (
+                    <td key={y.year} className="py-2 text-right">
+                      {usd(get(y))}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              <tr className="text-xs text-faint">
+                <td className="py-2">Debt coverage</td>
+                {l.years.map((y) => (
+                  <td key={y.year} className={`py-2 text-right ${y.dscr < 1.25 ? 'text-risk' : ''}`}>
+                    {Number.isFinite(y.dscr) ? times(y.dscr, 2) : 'no debt'}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-4 text-sm leading-6 text-muted">
+          Exit in {a.deal.holdYears} years at {times(a.deal.exitMultiple)} {usd(l.exitEbitda)} of EBITDA = {usd(l.exitEv)}. Less
+          remaining debt, plus cash, leaves {usd(l.exitEquity)} for you on {usd(l.equity)} invested.
+        </p>
+      </Panel>
+      <Panel title="Sensitivity: IRR by entry and exit multiple">
+        <Grid
+          colHead={l.grid.entries.map((m) => `Pay ${times(m)}`)}
+          rowHead={l.grid.exits.map((m) => `Exit ${times(m)}`)}
+          cells={l.grid.irr.map((row) => row.map((v) => (v == null ? '—' : pct(v))))}
+          center={[l.grid.exits.indexOf(a.deal.exitMultiple), l.grid.entries.indexOf(a.deal.offerMultiple)]}
+          corner=""
+        />
+      </Panel>
+    </>
+  );
+}
+
+function SU({ title, items }: { title: string; items: Array<{ name: string; amount: number }> }) {
+  const total = items.reduce((s, i) => s + i.amount, 0);
+  return (
+    <div>
+      <div className="mb-2 text-sm font-semibold">{title}</div>
+      <dl className="flex flex-col gap-2 text-sm">
+        {items.map((i) => (
+          <Row key={i.name} k={i.name} v={usd(i.amount)} />
+        ))}
+        <div className="border-t border-line pt-2">
+          <Row k="Total" v={usd(total)} bold />
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+/* ---------- Comps ---------- */
+
+function CompsTab({ a }: { a: Analysis }) {
+  const c = a.comps;
+  if (!c) return <Panel title="Comparable companies">No benchmark for this industry.</Panel>;
+  return (
+    <>
+      <div className="grid gap-6 sm:grid-cols-3">
+        <Panel>
+          <Stat label="Public-company EV / EBITDA" value={times(c.publicMultiple, 2)} prov="cited" note={c.sector} emphasis />
+        </Panel>
+        <Panel>
+          <Stat
+            label="Size discount for a private company"
+            value={`${pct(c.discount.low, 0)}–${pct(c.discount.high, 0)}`}
+            prov="assumed"
+            note={c.discount.band}
+            emphasis
+          />
+        </Panel>
+        <Panel>
+          <Stat
+            label="Implied value range"
+            value={`${usdShort(c.evLow)}–${usdShort(c.evHigh)}`}
+            note={`${times(c.multipleLow)}–${times(c.multipleHigh)} × ${usd(a.verifiedEbitda)}`}
+            prov="calculated"
+            emphasis
+          />
+        </Panel>
+      </div>
+      <Panel title="How this range is built">
+        <ol className="flex list-decimal flex-col gap-2 pl-5 text-sm leading-6">
+          <li>
+            Start from the median EV / EBITDA of US public companies in <span className="font-medium">{c.sector}</span>:{' '}
+            {times(c.publicMultiple, 2)}.
+          </li>
+          <li>
+            Public multiples are far too high for a company this size. Apply a {pct(c.discount.low, 0)}–{pct(c.discount.high, 0)}{' '}
+            discount for {c.discount.band.toLowerCase()}. The discount is an assumption, labeled as one.
+          </li>
+          <li>
+            Multiply the adjusted {times(c.multipleLow)}–{times(c.multipleHigh)} by the target’s supported 2025 EBITDA of{' '}
+            {usd(a.verifiedEbitda)}.
+          </li>
+        </ol>
+        <p className="mt-4 text-xs leading-5 text-faint">
+          Source:{' '}
+          <a className="underline" href={DAMODARAN_SOURCE.url} target="_blank" rel="noreferrer">
+            {DAMODARAN_SOURCE.title}
+          </a>
+          , positive-EBITDA firms. Raw public multiples are never applied to a private company.
+        </p>
+      </Panel>
+    </>
+  );
+}
+
+/* ---------- Precedents ---------- */
+
+function PrecedentsTab({ a }: { a: Analysis }) {
+  const { matched, others } = a.precedents;
+  return (
+    <>
+      <Panel
+        title="Closed deals in a nearby industry"
+        aside={matched.length ? `${matched.length} cited` : 'None for this industry'}
+      >
+        {matched.length ? <DealTable deals={matched} /> : <p className="text-sm text-muted">No cited deals match this industry yet.</p>}
+      </Panel>
+      {others.length ? (
+        <Panel title="Other small cited deals, for scale">
+          <DealTable deals={others} />
+        </Panel>
+      ) : null}
+      <p className="text-xs leading-5 text-faint">{THIN_SET_NOTE}</p>
+    </>
+  );
+}
+
+function DealTable({ deals }: { deals: CitedDeal[] }) {
+  return (
+    <Table
+      head={['Closed', 'Buyer', 'Target', 'Disclosed price', 'Source']}
+      rows={deals.map((d) => [
+        d.date,
+        d.acquirer,
+        d.target,
+        d.disclosed,
+        <a key="s" className="text-pine underline underline-offset-2" href={d.citation} target="_blank" rel="noreferrer">
+          Filing
+        </a>,
+      ])}
+    />
+  );
+}
+
+/* ---------- Combined ---------- */
+
+function CombinedTab({ a }: { a: Analysis }) {
+  const p = a.proForma;
+  return (
+    <>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <Panel>
+          <Stat label="Combined 2025 revenue" value={usd(p.years[0].revenue)} prov="calculated" note={`+${pct(p.revenueAccretion, 0)} for you`} emphasis />
+        </Panel>
+        <Panel>
+          <Stat
+            label="EBITDA added, with synergies"
+            value={`+${pct(p.ebitdaAccretion, 0)}`}
+            prov="calculated"
+            note="Target + kept synergies, over your EBITDA"
+            emphasis
+          />
+        </Panel>
+        <Panel>
+          <Stat
+            label="Debt / EBITDA"
+            value={`${times(p.leverageBuyerToday, 2)} → ${times(p.leverageAtClose, 2)}`}
+            prov="calculated"
+            note="You today, then combined at close"
+            emphasis
+          />
+        </Panel>
+        <Panel>
+          <Stat
+            label="Cash after the equity check"
+            value={<span className={p.cashLeft < 0 ? 'text-risk' : ''}>{usd(p.cashLeft)}</span>}
+            note={`${usd(p.buyerCash)} on hand − ${usd(p.equityNeeded)}`}
+            prov="calculated"
+            emphasis
+          />
+        </Panel>
+      </div>
+      <Panel title="Combined EBITDA" aside="Each company on its own growth path, plus phased-in synergies">
+        <StackedColumns
+          labels={p.years.map((y) => (y.year === 2025 ? '2025 actual' : String(y.year)))}
+          series={[
+            { name: a.buyer.name, color: COLORS.buyer, values: p.years.map((y) => y.buyerEbitda) },
+            { name: a.target.name, color: COLORS.target, values: p.years.map((y) => y.targetEbitda) },
+            { name: 'Kept synergies', color: COLORS.syn, values: p.years.map((y) => y.synergies) },
+          ]}
+        />
+      </Panel>
+      <Panel title="Side by side, 2025">
+        <Table
+          head={['', a.buyer.name, a.target.name, 'Combined']}
+          rows={[
+            ['Revenue', usd(a.buyer.revenue[2]), usd(a.target.revenue[2]), usd(a.buyer.revenue[2] + a.target.revenue[2])],
+            ['EBITDA', usd(a.buyer.ebitda[2]), usd(a.target.ebitda[2]), usd(a.buyer.ebitda[2] + a.target.ebitda[2])],
+            [
+              'EBITDA margin',
+              pct(a.buyer.ebitda[2] / a.buyer.revenue[2]),
+              pct(a.target.ebitda[2] / a.target.revenue[2]),
+              pct((a.buyer.ebitda[2] + a.target.ebitda[2]) / (a.buyer.revenue[2] + a.target.revenue[2])),
+            ],
+            [
+              'Revenue growth, 2023–25 per year',
+              pct(Math.sqrt(a.buyer.revenue[2] / a.buyer.revenue[0]) - 1),
+              pct(Math.sqrt(a.target.revenue[2] / a.target.revenue[0]) - 1),
+              '',
+            ],
+            ['Debt', usd(a.buyer.debt), `${usd(a.target.debt)} (paid off by seller)`, usd(p.debtAtClose)],
+          ]}
+        />
+      </Panel>
+    </>
+  );
+}
+
+/* ---------- Shared ---------- */
+
+function Table({ head, rows, foot }: { head: string[]; rows: ReactNode[][]; foot?: ReactNode[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[560px] text-sm">
+        <thead>
+          <tr className="border-b border-line text-xs text-faint">
+            {head.map((h, i) => (
+              <th key={i} className={`py-2 font-medium ${i === 0 ? 'text-left' : 'text-left sm:text-right'}`}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri} className="border-b border-line/60">
+              {row.map((cell, ci) => (
+                <td key={ci} className={`py-2.5 pr-3 tabular-nums ${ci === 0 ? 'text-left font-medium' : 'text-left sm:text-right'}`}>
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+        {foot ? (
+          <tfoot>
+            <tr className="font-semibold">
+              {foot.map((cell, ci) => (
+                <td key={ci} className={`py-2.5 pr-3 tabular-nums ${ci === 0 ? 'text-left' : 'text-left sm:text-right'}`}>
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        ) : null}
+      </table>
+    </div>
+  );
+}
+
+function Grid({
+  colHead,
+  rowHead,
+  cells,
+  center,
+  corner,
+}: {
+  colHead: string[];
+  rowHead: string[];
+  cells: string[][];
+  center: [number, number];
+  corner: string;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm tabular-nums">
+        <thead>
+          <tr className="text-xs text-faint">
+            <th className="py-2 text-left font-normal">{corner}</th>
+            {colHead.map((h) => (
+              <th key={h} className="py-2 text-right font-medium">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {cells.map((row, ri) => (
+            <tr key={rowHead[ri]} className="border-t border-line/60">
+              <th className="py-2 text-left text-xs font-medium text-faint">{rowHead[ri]}</th>
+              {row.map((cell, ci) => (
+                <td
+                  key={ci}
+                  className={`py-2 text-right ${ri === center[0] && ci === center[1] ? 'rounded bg-pine font-semibold text-white' : ''}`}
+                >
+                  <span className="px-1.5">{cell}</span>
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
       </table>
-    </section>
-  );
-}
-
-function SynergyTab() {
-  const { caseFile } = useWorkspace();
-  if (!caseFile) return null;
-  const { intake, synergies, fit } = caseFile;
-  return (
-    <section className="flex max-w-xl flex-col gap-5 text-sm">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <article>
-          <h2 className="font-medium">{intake.buyerName}</h2>
-          <p className="mt-1 text-stone-600">{intake.buyerDescription}</p>
-        </article>
-        <article>
-          <h2 className="font-medium">{intake.targetName}</h2>
-          <p className="mt-1 text-stone-600">{intake.targetDescription}</p>
-        </article>
-      </div>
-      <ul className="flex flex-col gap-2 text-stone-700">
-        {fit.notes.map((note) => (
-          <li key={note}>{note}</li>
-        ))}
-      </ul>
-      {synergies.lines.map((line) => (
-        <p key={line.description}>
-          {line.description}{' '}
-          <QuietMoney cents={line.retained.cents} label="calculated" source={line.haircut.source} />
-        </p>
-      ))}
-      <p className="text-stone-500">Do not pay more.</p>
-    </section>
-  );
-}
-
-function Fact({ label, value, tag }: { label: string; value: string; tag: 'assumed' | 'calculated' }) {
-  return (
-    <div>
-      <dt className="text-stone-400">{label}</dt>
-      <dd>
-        {value} <Tag label={tag} />
-      </dd>
     </div>
   );
 }
 
-function wholeDollars(cents: number) {
-  return Math.round(cents / 100) * 100;
+function Row({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
+  return (
+    <div className={`flex items-baseline justify-between gap-4 ${bold ? 'font-semibold' : ''}`}>
+      <dt className={bold ? '' : 'text-muted'}>{k}</dt>
+      <dd className="tabular-nums">{v}</dd>
+    </div>
+  );
 }
 
-function shortMoney(cents: number) {
-  const dollars = Math.round(cents / 100);
-  const sign = dollars < 0 ? '-' : '';
-  const abs = Math.abs(dollars);
-  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000)}k`;
-  return `${sign}$${abs}`;
+function Assumptions() {
+  return (
+    <details className="group rounded-2xl border border-line bg-card p-6">
+      <summary className="flex cursor-pointer list-none items-center justify-between text-base font-semibold">
+        Assumptions Dealspan made for you
+        <span className="text-sm font-normal text-muted group-open:hidden">Show {ASSUMPTION_NOTES.length}</span>
+        <span className="hidden text-sm font-normal text-muted group-open:inline">Hide</span>
+      </summary>
+      <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+        {ASSUMPTION_NOTES.map((n) => (
+          <div key={n.name} className="flex items-start justify-between gap-4 border-b border-line/60 pb-3 text-sm">
+            <div>
+              <div className="font-medium">{n.name}</div>
+              <div className="text-xs leading-5 text-faint">{n.why}</div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="tabular-nums">{n.value}</span>
+              <Prov label="assumed" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 flex items-center gap-2 text-xs text-faint">
+        <Swatch color={COLORS.line} /> Everything else on this page is either something you typed or calculated from it.
+      </p>
+    </details>
+  );
 }

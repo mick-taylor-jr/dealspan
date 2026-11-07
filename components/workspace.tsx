@@ -1,66 +1,64 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import { buildCase, type CaseFile } from '@/lib/case';
-import { greenridgeIntake } from '@/lib/greenridge';
-import { isIndustry } from '@/lib/industries';
-import { parsePositiveDecimal } from '@/lib/money';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { demoIntake } from '@/lib/demo';
+import { analyze, findMissing, type Analysis, type Missing } from '@/lib/model';
 import { emptyIntake, type Intake } from '@/lib/types';
 
 type WorkspaceValue = {
   intake: Intake;
-  setIntake: (intake: Intake) => void;
-  caseFile: CaseFile | null;
-  loadExample: () => void;
-  submit: () => void;
-  canSubmit: boolean;
+  setIntake: (next: Intake | ((prev: Intake) => Intake)) => void;
+  missing: Missing[];
+  analysis: Analysis | null;
+  loadDemo: () => void;
+  clear: () => void;
+  ready: boolean;
 };
 
 const WorkspaceContext = createContext<WorkspaceValue | null>(null);
-
-function filled(raw: string) {
-  return /^\d+$/.test(raw) && raw !== '0';
-}
+const KEY = 'dealspan:intake:v2';
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const [intake, setIntake] = useState<Intake>(emptyIntake);
-  const [caseFile, setCaseFile] = useState<CaseFile | null>(null);
-  const canSubmit =
-    intake.buyerName.trim() !== '' &&
-    intake.targetName.trim() !== '' &&
-    isIndustry(intake.buyerIndustry) &&
-    isIndustry(intake.industry) &&
-    intake.fromYear <= intake.toYear &&
-    filled(intake.buyerRevenueRaw) &&
-    filled(intake.buyerEbitdaRaw) &&
-    filled(intake.revenueRaw) &&
-    filled(intake.claimedEarningsRaw) &&
-    parsePositiveDecimal(intake.multipleRaw) != null;
+  const [intake, setIntakeState] = useState<Intake>(emptyIntake);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- restore once after mount
+      if (saved) setIntakeState({ ...emptyIntake(), ...JSON.parse(saved) });
+    } catch {
+      // Storage can be unavailable; start empty.
+    }
+    setReady(true);
+  }, []);
+
+  const setIntake = useCallback((next: Intake | ((prev: Intake) => Intake)) => {
+    setIntakeState((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next;
+      try {
+        localStorage.setItem(KEY, JSON.stringify(value));
+      } catch {
+        // ignore
+      }
+      return value;
+    });
+  }, []);
+
+  const missing = useMemo(() => findMissing(intake), [intake]);
+  const analysis = useMemo(() => (missing.length ? null : analyze(intake)), [intake, missing]);
 
   const value = useMemo<WorkspaceValue>(
     () => ({
       intake,
       setIntake,
-      caseFile,
-      loadExample: () => setIntake(greenridgeIntake()),
-      submit: () => {
-        if (!canSubmit) return;
-        const next: Intake = {
-          ...intake,
-          metric: 'EBITDA',
-          claimPeriod:
-            intake.fromYear === intake.toYear ? String(intake.fromYear) : `${intake.fromYear}–${intake.toYear}`,
-        };
-        const built = buildCase(next);
-        if (!built) return;
-        setCaseFile(built);
-        router.push('/results');
-      },
-      canSubmit,
+      missing,
+      analysis,
+      loadDemo: () => setIntake(demoIntake()),
+      clear: () => setIntake(emptyIntake()),
+      ready,
     }),
-    [intake, caseFile, canSubmit, router],
+    [intake, setIntake, missing, analysis, ready],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
@@ -68,6 +66,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
 export function useWorkspace() {
   const value = useContext(WorkspaceContext);
-  if (!value) throw new Error('Workspace missing');
+  if (!value) throw new Error('useWorkspace must be used inside WorkspaceProvider');
   return value;
 }
