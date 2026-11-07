@@ -19,8 +19,32 @@ is entered once, on the intake page. The results workspace then builds, with no 
 Tax is 21%. Every other assumption is listed on screen and labeled `assumed`. The demo button loads two
 hypothetical companies (Northline Grounds Co. buying Greenridge Landscape Co.); neither is real.
 
-Deal data comes from the DealSpan comparable deals workbook (76 deals, Deals tab). Math is deterministic TypeScript in `lib/` (`model.ts`, `comps.ts`, `financing.ts`, `fit.ts`, `assumptions.ts`). No API keys or environment
-variables. Inputs are kept in the browser’s local storage only.
+Deal data comes from the DealSpan comparable deals workbook (76 deals, Deals tab). Math is deterministic TypeScript in `lib/` (`model.ts`, `comps.ts`, `financing.ts`, `fit.ts`, `assumptions.ts`). Inputs are kept in the browser tab’s session storage only.
+
+## Start from a document (optional, uses Claude)
+
+The intake page can read a broker listing, teaser, CIM or P&L about the target and fill its blank fields. Claude only
+copies values the document states, each with the quote (and page) it came from, and the user checks every one before
+running. Rules, enforced in `lib/extract.ts` and its tests:
+
+- Only the target is filled, and only fields that are blank. Anything the user typed is kept and the difference listed.
+- Reported EBITDA (before add-backs) can fill the three-year table; adjusted EBITDA only fills "EBITDA the seller
+  claims"; SDE fills nothing.
+- No calculating or estimating. Values without a quote, unknown fields and out-of-range numbers are dropped.
+- The math never comes from AI. Every model still runs on the deterministic code above.
+
+The document is sent to Anthropic for that one request and not stored. The feature is hidden unless
+`ANTHROPIC_API_KEY` is set. Copy `.env.example` to `.env.local` for local work (each teammate uses their own key).
+On Vercel, set the variables under Project → Settings → Environment Variables:
+
+| Variable                  | Needed | What it does                                                                                |
+| ------------------------- | ------ | ------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`       | yes    | Turns the feature on. Server-only; never prefix with `NEXT_PUBLIC_`.                        |
+| `DEALSPAN_AI_MODEL`       | no     | Defaults to `claude-haiku-5-5`. `claude-sonnet-5-5` reads messy CIMs better and costs more. |
+| `DEALSPAN_AI_ACCESS_CODE` | no     | If set, users must enter it before importing, so strangers can’t spend the credits.         |
+
+Set a monthly spend limit in the Anthropic Console as well; the built-in rate limit (12 imports per hour per IP) is
+best-effort.
 
 ```bash
 pnpm install
