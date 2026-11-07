@@ -1,6 +1,6 @@
 export type DcfInput = {
-  rfBps: number | null;
-  betaThousandths: number | null;
+  rfBps: number;
+  betaThousandths: number;
   erpBps: number;
   sizeBps: number;
   companyBps: number;
@@ -17,12 +17,12 @@ export type DcfInput = {
 
 export function defaultDcf(): DcfInput {
   return {
-    rfBps: null,
-    betaThousandths: null,
+    rfBps: 400,
+    betaThousandths: 1_000,
     erpBps: 500,
     sizeBps: 500,
     companyBps: 200,
-    taxBps: 2_500,
+    taxBps: 2_100,
     wdBps: 2_500,
     kdBps: 1_000,
     growthBps: 0,
@@ -49,6 +49,9 @@ export type DcfRun = {
   exitEvCents: number;
   gordonEquityCents: number | null;
   exitEquityCents: number;
+  exitTerminalCents: number;
+  impliedGBps: number | null;
+  methodsReconcile: boolean;
   grid: DcfPoint[][];
   envelope: { lowCents: number; highCents: number } | null;
 };
@@ -77,9 +80,14 @@ function discount(cents: bigint, waccBps: bigint, year: number): bigint {
   return value;
 }
 
-export function runDcf(input: DcfInput, revenueCents: number, ebitdaCents: number): DcfRun | null {
-  if (input.rfBps == null || input.betaThousandths == null || revenueCents <= 0 || ebitdaCents <= 0)
-    return null;
+export function runDcf(
+  input: DcfInput,
+  revenueCents: number,
+  ebitdaCents: number,
+  debtCents = 0,
+  cashCents = 0,
+): DcfRun | null {
+  if (revenueCents <= 0 || ebitdaCents <= 0) return null;
   const marginBps = Math.round((ebitdaCents * 10_000) / revenueCents);
   const keBps =
     input.rfBps +
@@ -118,13 +126,20 @@ export function runDcf(input: DcfInput, revenueCents: number, ebitdaCents: numbe
   if (!last) return null;
   const exitTv = (BigInt(last.ebitdaCents) * BigInt(input.exitThousandths)) / BigInt(1_000);
   const exitEv = pvFcff + discount(exitTv, wacc, 5);
+  const fcffLast = BigInt(last.fcffCents);
+  const impliedDen = exitTv + fcffLast;
+  const impliedGBps =
+    impliedDen === ZERO
+      ? null
+      : Number(((exitTv * BigInt(waccBps)) / TEN_THOUSAND - fcffLast) * TEN_THOUSAND / impliedDen);
   let gordonEv: bigint | null = null;
   if (input.gBps > -10_000 && input.gBps < waccBps) {
     const gordonTv = (BigInt(last.fcffCents) * BigInt(10_000 + input.gBps)) / BigInt(waccBps - input.gBps);
     gordonEv = pvFcff + discount(gordonTv, wacc, 5);
   }
+  const methodsReconcile = impliedGBps != null && impliedGBps > -10_000 && impliedGBps < waccBps && gordonEv != null;
 
-  const debtLike = ZERO;
+  const debtLike = BigInt(debtCents - cashCents);
   const waccSteps = [-100, -50, 0, 50, 100];
   const gSteps = [-50, -25, 0, 25, 50];
   const cells: number[] = [];
@@ -153,10 +168,13 @@ export function runDcf(input: DcfInput, revenueCents: number, ebitdaCents: numbe
     keBps,
     waccBps,
     years,
-    gordonEvCents: gordonEv == null ? null : Number(gordonEv - debtLike),
-    exitEvCents: Number(exitEv - debtLike),
+    gordonEvCents: gordonEv == null ? null : Number(gordonEv),
+    exitEvCents: Number(exitEv),
     gordonEquityCents: gordonEv == null ? null : Number(gordonEv - debtLike),
     exitEquityCents: Number(exitEv - debtLike),
+    exitTerminalCents: Number(exitTv),
+    impliedGBps,
+    methodsReconcile,
     grid,
     envelope: cells.length === 0 ? null : { lowCents: Math.min(...cells), highCents: Math.max(...cells) },
   };

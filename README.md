@@ -1,6 +1,6 @@
 # Dealspan
 
-A buyer enters a company, an industry we have cited deals for, seller EBITDA, revenue, and a multiple. Submit opens a short workspace: what to pay, then comps, precedents, DCF, LBO, and synergies.
+A buyer enters their own company and the company they want to acquire. Submit opens a short workspace: what to pay, then comps, precedents, DCF, LBO, and synergies. The model tabs use the intake numbers and labeled assumptions. They do not ask for more inputs.
 
 Greenridge Landscape Co. is a labeled hypothetical, not a real company. Its locked dollar amounts are shown as EBITDA example figures.
 

@@ -4,51 +4,43 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { QuietMoney, Tag } from '@/components/quiet';
 import { useWorkspace } from '@/components/workspace';
-import { sizeAdjustedComps } from '@/lib/comps';
-import { runDcf } from '@/lib/dcf';
-import { isIndustry } from '@/lib/industries';
-import { runLbo } from '@/lib/lbo';
+import { MODEL_ASSUMPTIONS } from '@/lib/case';
 import { formatCents } from '@/lib/money';
+import { isIndustry } from '@/lib/industries';
 import { CITED_DEALS, THIN_SET_NOTE } from '@/lib/precedents';
-import { synergyView } from '@/lib/synergy';
 
 const TABS = ['Overview', 'Comps', 'Precedents', 'DCF', 'LBO', 'Synergies'] as const;
 type Tab = (typeof TABS)[number];
 
 export function ResultsScreen() {
-  const workspace = useWorkspace();
+  const { caseFile } = useWorkspace();
   const [tab, setTab] = useState<Tab>('Overview');
-  const { submission } = workspace;
-  if (!submission) {
+  if (!caseFile) {
     return (
-      <div className="mx-auto max-w-md px-6 py-24">
-        <p className="text-stone-600">
-          No company yet.{' '}
-          <Link className="underline" href="/">
-            Start
-          </Link>
-        </p>
+      <div className="mx-auto max-w-md px-6 py-24 text-sm text-stone-600">
+        No companies yet.{' '}
+        <Link className="underline" href="/">
+          Start
+        </Link>
       </div>
     );
   }
-
+  const { intake } = caseFile;
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 py-12">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {submission.intake.targetName || 'Untitled'}
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{intake.targetName}</h1>
           <p className="mt-1 text-sm text-stone-500">
-            {submission.intake.exampleId ? 'Hypothetical · ' : ''}
-            {submission.intake.industry} · {submission.intake.claimPeriod}
+            {intake.exampleId ? 'Hypothetical · ' : ''}
+            {intake.buyerName} · {intake.claimPeriod}
           </p>
         </div>
         <Link href="/" className="text-sm text-stone-500 underline">
           Edit
         </Link>
       </header>
-      <nav className="flex gap-6 overflow-x-auto border-b border-stone-200">
+      <nav className="flex gap-5 overflow-x-auto border-b border-stone-200">
         {TABS.map((item) => (
           <button
             key={item}
@@ -75,72 +67,48 @@ export function ResultsScreen() {
 }
 
 function Overview() {
-  const { submission, buyerMode, synergies } = useWorkspace();
-  if (!submission) return null;
-  const view = synergyView(buyerMode, synergies);
-  const pay = submission.payCents;
-  const ask = submission.askCents;
+  const { caseFile } = useWorkspace();
+  if (!caseFile) return null;
   return (
-    <section className="flex flex-col gap-8">
+    <section className="flex flex-col gap-6">
       <div>
         <p className="text-sm text-stone-500">Pay</p>
-        {pay != null ? (
-          <QuietMoney
-            cents={pay}
-            label="calculated"
-            source="Documents-supported EBITDA × multiple"
-            size="lg"
-          />
-        ) : (
-          <p className="text-5xl font-semibold tracking-tight text-stone-300">—</p>
-        )}
-        {ask != null ? (
-          <p className="mt-4 text-sm text-stone-500">
-            Ask <QuietMoney cents={ask} label="calculated" source="Seller EBITDA × multiple" />
-          </p>
-        ) : null}
-        {pay != null && ask != null && ask > pay ? (
+        <QuietMoney
+          cents={caseFile.payCents}
+          label="calculated"
+          source="Supported EBITDA × offer multiple"
+          size="lg"
+        />
+        <p className="mt-4 text-sm text-stone-500">
+          Ask{' '}
+          <QuietMoney cents={caseFile.askCents} label="calculated" source="Seller EBITDA × offer multiple" />
+        </p>
+        {caseFile.askCents > caseFile.payCents ? (
           <p className="mt-2 text-sm text-stone-500">
-            <QuietMoney cents={ask - pay} label="calculated" source="Ask minus supported price" /> above
-            supported EBITDA
+            <QuietMoney
+              cents={caseFile.askCents - caseFile.payCents}
+              label="calculated"
+              source="Ask minus supported price"
+            />{' '}
+            above supported EBITDA
           </p>
         ) : null}
       </div>
-      <p className="text-sm text-stone-600">
-        {buyerMode === 'standalone' || view.blocked
-          ? 'Standalone. Do not pay for synergies.'
-          : view.lines.length
-            ? 'Add-on upside only. Price stays on supported EBITDA.'
-            : 'Add-on, but no synergies stated. Price unchanged.'}
-      </p>
+      <p className="max-w-xl text-sm text-stone-600">{caseFile.fit.notes[caseFile.fit.notes.length - 1]}</p>
       <details className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
         <summary className="cursor-pointer text-sm">Earnings check</summary>
-        <div className="mt-4 flex flex-col gap-3">
-          {submission.deal ? (
-            submission.deal.lines.map((line) => (
-              <p key={line.id} className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-                <span>
-                  {line.description}{' '}
-                  <span className="text-stone-400">
-                    {line.classification === 'accepted' ? 'Accepted' : 'Rejected'}
-                  </span>
+        <div className="mt-4 flex flex-col gap-2">
+          {caseFile.deal?.lines.map((line) => (
+            <p key={line.id} className="flex justify-between gap-3 text-sm">
+              <span>
+                {line.description}{' '}
+                <span className="text-stone-400">
+                  {line.classification === 'accepted' ? 'Accepted' : 'Rejected'}
                 </span>
-                <QuietMoney cents={line.managementCents} label="user-entered" source={line.rationale} />
-              </p>
-            ))
-          ) : (
-            <p className="text-sm text-stone-500">No proof lines.</p>
-          )}
-          {submission.supportedCents != null ? (
-            <p className="text-sm">
-              Supported{' '}
-              <QuietMoney
-                cents={submission.supportedCents}
-                label="calculated"
-                source="Accepted lines plus tax-return profit"
-              />
+              </span>
+              <QuietMoney cents={line.managementCents} label="user-entered" source={line.rationale} />
             </p>
-          ) : null}
+          ))}
         </div>
       </details>
     </section>
@@ -148,72 +116,40 @@ function Overview() {
 }
 
 function Comps() {
-  const { comps, setComps, submission } = useWorkspace();
-  if (!submission) return null;
-  const result = sizeAdjustedComps(comps, submission.supportedCents);
   return (
-    <section className="flex flex-col gap-6">
-      <p className="text-sm text-stone-500">No confirmed peers. The set is thin.</p>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <SmallField
-          label="Benchmark"
-          suffix="×"
-          value={comps.benchmarkRaw}
-          onChange={(benchmarkRaw) => setComps({ ...comps, benchmarkRaw: cleanDecimal(benchmarkRaw) })}
-        />
-        <SmallField
-          label="Discount low"
-          suffix="%"
-          value={comps.discountLowRaw}
-          onChange={(discountLowRaw) => setComps({ ...comps, discountLowRaw: cleanDecimal(discountLowRaw) })}
-        />
-        <SmallField
-          label="Discount high"
-          suffix="%"
-          value={comps.discountHighRaw}
-          onChange={(discountHighRaw) =>
-            setComps({ ...comps, discountHighRaw: cleanDecimal(discountHighRaw) })
-          }
-        />
-      </div>
-      {result.status === 'need-benchmark' ? <p className="text-sm">No benchmark entered.</p> : null}
-      {result.status === 'need-discount' ? <p className="text-sm">Discount required — enter one.</p> : null}
-      {result.status === 'ready' ? (
-        <div className="flex flex-col gap-2 text-sm">
-          <p>
-            {formatTimes(result.multipleLow.cents)}–{formatTimes(result.multipleHigh.cents)}{' '}
-            <Tag label="calculated" />
-          </p>
-          {result.valueLow && result.valueHigh ? (
-            <p>
-              {formatCents(result.valueLow.cents)}–{formatCents(result.valueHigh.cents)}{' '}
-              <Tag label="calculated" />
-            </p>
-          ) : (
-            <p className="text-stone-500">Needs documents-supported EBITDA.</p>
-          )}
-        </div>
-      ) : null}
+    <section className="flex max-w-xl flex-col gap-3 text-sm text-stone-600">
+      <p>No confirmed peers. The set is thin.</p>
+      <p>
+        Size discount {MODEL_ASSUMPTIONS.discountLowBps / 100}–{MODEL_ASSUMPTIONS.discountHighBps / 100}%{' '}
+        <Tag label="assumed" />
+      </p>
+      <p>No public benchmark was entered, so a raw multiple is not applied.</p>
     </section>
   );
 }
 
 function Precedents() {
-  const { submission } = useWorkspace();
-  if (!submission || !isIndustry(submission.intake.industry)) return null;
-  const rows = CITED_DEALS.filter((deal) => deal.industry === submission.intake.industry);
+  const { caseFile } = useWorkspace();
+  if (!caseFile || !isIndustry(caseFile.intake.industry)) return null;
+  const rows = CITED_DEALS.filter((deal) => deal.industry === caseFile.intake.industry);
+  const landscaping = /landscap/i.test(
+    `${caseFile.intake.targetDescription} ${caseFile.intake.buyerDescription}`,
+  );
   return (
     <section className="flex flex-col gap-4">
       <p className="text-sm text-stone-500">{THIN_SET_NOTE}</p>
-      <ul className="flex flex-col">
+      {landscaping ? (
+        <p className="text-sm text-stone-500">The cited set has no landscaping closings.</p>
+      ) : null}
+      <ul>
         {rows.map((deal) => (
-          <li key={deal.citation} className="flex flex-col gap-1 border-t border-stone-200 py-4 text-sm">
-            <span className="font-medium">
+          <li key={deal.citation} className="border-t border-stone-200 py-4 text-sm">
+            <p className="font-medium">
               {deal.acquirer} · {deal.target}
-            </span>
-            <span className="text-stone-500">
+            </p>
+            <p className="text-stone-500">
               {deal.date} · {deal.disclosed}
-            </span>
+            </p>
             <a className="text-stone-500 underline" href={deal.citation} target="_blank" rel="noreferrer">
               Source
             </a>
@@ -225,342 +161,210 @@ function Precedents() {
 }
 
 function DcfTab() {
-  const { dcf, setDcf, submission } = useWorkspace();
-  if (!submission?.revenueCents || submission.supportedCents == null) {
-    return <p className="text-sm text-stone-500">Needs revenue and supported EBITDA.</p>;
-  }
-  const run = runDcf(dcf, submission.revenueCents, submission.supportedCents);
+  const { caseFile } = useWorkspace();
+  if (!caseFile) return null;
+  const { dcf, debt, cash } = caseFile;
   return (
     <section className="flex flex-col gap-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <PercentField
-          label="Risk-free"
-          value={dcf.rfBps}
-          onChange={(rfBps) => setDcf({ ...dcf, rfBps })}
-          hint="user-entered"
-        />
-        <NumberField
-          label="Beta"
-          value={dcf.betaThousandths}
-          scale={1000}
-          onChange={(betaThousandths) => setDcf({ ...dcf, betaThousandths })}
-          hint="user-entered"
-        />
-        <PercentField
-          label="ERP"
-          value={dcf.erpBps}
-          onChange={(erpBps) => setDcf({ ...dcf, erpBps: erpBps ?? dcf.erpBps })}
-          hint="assumed"
-        />
-        <PercentField
-          label="Size premium"
-          value={dcf.sizeBps}
-          onChange={(sizeBps) => setDcf({ ...dcf, sizeBps: sizeBps ?? dcf.sizeBps })}
-          hint="assumed"
-        />
-        <PercentField
-          label="Company premium"
-          value={dcf.companyBps}
-          onChange={(companyBps) => setDcf({ ...dcf, companyBps: companyBps ?? dcf.companyBps })}
-          hint="assumed"
-        />
-        <PercentField
-          label="Terminal g"
-          value={dcf.gBps}
-          onChange={(gBps) => setDcf({ ...dcf, gBps: gBps ?? dcf.gBps })}
-          hint="assumed"
-        />
-      </div>
-      {run?.gordonEquityCents != null ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm text-stone-500">Gordon equity</p>
+      <div>
+        <p className="text-sm text-stone-500">Gordon equity</p>
+        {dcf.gordonEquityCents != null ? (
           <QuietMoney
-            cents={run.gordonEquityCents}
+            cents={wholeDollars(dcf.gordonEquityCents)}
             label="calculated"
-            source="Five-year FCFF plus Gordon terminal value. Debt not entered, treated as zero by assumption."
+            source="FCFF and Gordon terminal value, minus net debt"
             size="lg"
           />
-          <p className="text-sm text-stone-500">
-            Exit-multiple equity{' '}
-            <QuietMoney
-              cents={run.exitEquityCents}
-              label="calculated"
-              source="EBITDA in year 5 × assumed 6.0×"
-            />
-          </p>
-          {run.envelope ? (
-            <p className="text-sm text-stone-500">
-              Grid {formatCents(run.envelope.lowCents)}–{formatCents(run.envelope.highCents)}{' '}
-              <Tag label="calculated" />
-            </p>
-          ) : null}
-        </div>
-      ) : (
-        <p className="text-sm text-stone-500">Add a risk-free rate and a beta.</p>
-      )}
+        ) : (
+          <p className="text-3xl text-stone-300">—</p>
+        )}
+        <p className="mt-3 text-sm text-stone-500">
+          Exit equity{' '}
+          <QuietMoney
+            cents={wholeDollars(dcf.exitEquityCents)}
+            label="calculated"
+            source="Year-5 EBITDA × 6.0×, minus net debt"
+          />
+        </p>
+      </div>
+      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+        <Fact label="Risk-free" value="4.0%" tag="assumed" />
+        <Fact label="Beta" value="1.00" tag="assumed" />
+        <Fact label="ERP" value="5.0%" tag="assumed" />
+        <Fact label="Size" value="5.0%" tag="assumed" />
+        <Fact label="Company" value="2.0%" tag="assumed" />
+        <Fact label="Tax" value="21%" tag="assumed" />
+        <Fact label="Debt weight" value="25%" tag="assumed" />
+        <Fact label="WACC" value={`${(dcf.waccBps / 100).toFixed(1)}%`} tag="calculated" />
+        <Fact label="Terminal g" value="2.5%" tag="assumed" />
+      </dl>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="text-xs text-stone-400">
+              <th className="py-1 pr-3 font-medium">Year</th>
+              <th className="py-1 pr-3 font-medium">EBITDA</th>
+              <th className="py-1 font-medium">FCFF</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dcf.years.map((year, index) => (
+              <tr key={index} className="border-t border-stone-100">
+                <td className="py-1 pr-3">{index + 1}</td>
+                <td className="py-1 pr-3 tabular-nums">{formatCents(wholeDollars(year.ebitdaCents))}</td>
+                <td className="py-1 tabular-nums">{formatCents(wholeDollars(year.fcffCents))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-sm text-stone-500">
+        Debt <QuietMoney cents={debt.cents} label={debt.label} source="Target interest-bearing debt" /> · Cash{' '}
+        <QuietMoney cents={cash.cents} label={cash.label} source="Target cash" />
+      </p>
+      <p className="text-sm text-stone-500">
+        {dcf.methodsReconcile
+          ? 'Gordon growth and the 6.0× exit can both be read. They are not blended.'
+          : 'Gordon growth and the 6.0× exit do not economically reconcile. They are not blended.'}
+      </p>
+      {caseFile.dcf.envelope ? (
+        <p className="text-sm text-stone-500">
+          Grid {formatCents(wholeDollars(caseFile.dcf.envelope.lowCents))}–
+          {formatCents(wholeDollars(caseFile.dcf.envelope.highCents))} <Tag label="calculated" />
+        </p>
+      ) : null}
+      <div className="overflow-x-auto">
+        <table className="w-full text-right text-xs tabular-nums">
+          <tbody>
+            {dcf.grid.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex} className="border border-stone-100 px-2 py-1 text-stone-600">
+                    {cell.invalid || cell.equityCents == null ? '—' : shortMoney(cell.equityCents)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
 
 function LboTab() {
-  const { lbo, setLbo, submission } = useWorkspace();
-  if (!submission) return null;
-  const price = submission.payCents ?? submission.askCents;
-  const ebitda = submission.supportedCents ?? submission.claimedCents;
-  const run = price == null ? null : runLbo(lbo, ebitda, price);
+  const { caseFile } = useWorkspace();
+  if (!caseFile) return null;
+  const { lbo } = caseFile;
   return (
     <section className="flex flex-col gap-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SmallField
-          label="Debt"
-          prefix="$"
-          value={lbo.debtRaw ? Number(lbo.debtRaw).toLocaleString('en-US') : ''}
-          onChange={(value) => setLbo({ ...lbo, debtRaw: value.replace(/\D/g, '').slice(0, 12) })}
-        />
-        <PercentField
-          label="Rate"
-          value={lbo.rateBps}
-          onChange={(rateBps) => setLbo({ ...lbo, rateBps })}
-          hint="user-entered"
-        />
-        <NumberField
-          label="Amort years"
-          value={lbo.amortYears}
-          scale={1}
-          onChange={(amortYears) => setLbo({ ...lbo, amortYears })}
-          hint="user-entered"
-        />
-        <NumberField
-          label="Exit multiple"
-          value={lbo.exitThousandths}
-          scale={1000}
-          onChange={(exitThousandths) => setLbo({ ...lbo, exitThousandths })}
-          hint="user-entered"
-        />
-        <PercentField
-          label="EBITDA growth"
-          value={lbo.growthBps}
-          onChange={(growthBps) => setLbo({ ...lbo, growthBps })}
-          hint="user-entered"
-        />
+      <div>
+        <p className="text-sm text-stone-500">MOIC</p>
+        <p className="text-5xl font-semibold tracking-tight tabular-nums">
+          {(lbo.moicThousandths / 1000).toFixed(2)}× <Tag label="calculated" />
+        </p>
+        <p className="mt-3 text-sm text-stone-500">
+          IRR {lbo.irrBps == null ? '—' : `${(lbo.irrBps / 100).toFixed(1)}%`} <Tag label="calculated" />
+        </p>
       </div>
-      {run ? (
-        <div>
-          <p className="text-sm text-stone-500">MOIC</p>
-          <p className="text-5xl font-semibold tracking-tight tabular-nums">
-            {(run.moicThousandths / 1000).toFixed(2)}× <Tag label="calculated" />
-          </p>
-          <p className="mt-3 text-sm text-stone-500">
-            Equity{' '}
-            <QuietMoney
-              cents={run.equityCents}
-              label="calculated"
-              source="Price minus the debt you entered"
-            />
-          </p>
-        </div>
-      ) : (
-        <p className="text-sm text-stone-500">Enter debt. It is not estimated.</p>
-      )}
+      <div className="grid gap-4 text-sm sm:grid-cols-2">
+        <p>
+          Price{' '}
+          <QuietMoney cents={lbo.priceCents} label="calculated" source="Supported EBITDA × offer multiple" />
+        </p>
+        <p>
+          Debt{' '}
+          <QuietMoney
+            cents={lbo.debtCents}
+            label={caseFile.debt.label}
+            source="Target interest-bearing debt"
+          />
+        </p>
+        <p>
+          Equity <QuietMoney cents={lbo.equityCents} label="calculated" source="Price minus debt" />
+        </p>
+        <p className="text-stone-500">
+          Rate 10%, amort 10 years, hold 5 years, exit 6.0×, tax 21% <Tag label="assumed" />
+        </p>
+      </div>
+      <table className="w-full text-left text-sm">
+        <thead>
+          <tr className="text-xs text-stone-400">
+            <th className="py-1 font-medium">Year</th>
+            <th className="py-1 font-medium">Open</th>
+            <th className="py-1 font-medium">Interest</th>
+            <th className="py-1 font-medium">Paydown</th>
+            <th className="py-1 font-medium">Close</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lbo.schedule.map((year) => (
+            <tr key={year.year} className="border-t border-stone-100 tabular-nums">
+              <td className="py-1">{year.year}</td>
+              <td>{formatCents(year.openCents)}</td>
+              <td>{formatCents(year.interestCents)}</td>
+              <td>{formatCents(year.paydownCents)}</td>
+              <td>{formatCents(year.closeCents)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   );
 }
 
 function SynergyTab() {
-  const { buyerMode, setBuyerMode, synergies, setSynergies } = useWorkspace();
-  const view = synergyView(buyerMode, synergies);
+  const { caseFile } = useWorkspace();
+  if (!caseFile) return null;
+  const { intake, synergies, fit } = caseFile;
   return (
-    <section className="flex flex-col gap-6">
-      <div className="flex gap-2">
-        {(['standalone', 'addon'] as const).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => setBuyerMode(mode)}
-            className={
-              mode === buyerMode
-                ? 'rounded-full bg-stone-900 px-4 py-2 text-sm text-white'
-                : 'rounded-full border border-stone-200 px-4 py-2 text-sm'
-            }
-          >
-            {mode === 'standalone' ? 'Standalone' : 'Add-on'}
-          </button>
-        ))}
+    <section className="flex max-w-xl flex-col gap-5 text-sm">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <article>
+          <h2 className="font-medium">{intake.buyerName}</h2>
+          <p className="mt-1 text-stone-600">{intake.buyerDescription}</p>
+        </article>
+        <article>
+          <h2 className="font-medium">{intake.targetName}</h2>
+          <p className="mt-1 text-stone-600">{intake.targetDescription}</p>
+        </article>
       </div>
-      {view.blocked ? <p className="text-sm">Synergies do not change the price.</p> : null}
-      {!view.blocked ? (
-        <>
-          <button
-            type="button"
-            className="self-start text-sm text-stone-500 underline"
-            onClick={() =>
-              setSynergies([
-                ...synergies,
-                { id: crypto.randomUUID(), kind: 'cost', description: '', amountRaw: '' },
-              ])
-            }
-          >
-            Add a stated synergy
-          </button>
-          {synergies.map((line) => (
-            <div key={line.id} className="grid gap-3 sm:grid-cols-3">
-              <select
-                className={smallClass}
-                value={line.kind}
-                onChange={(event) =>
-                  setSynergies(
-                    synergies.map((item) =>
-                      item.id === line.id
-                        ? { ...item, kind: event.target.value as 'cost' | 'revenue' }
-                        : item,
-                    ),
-                  )
-                }
-              >
-                <option value="cost">Cost</option>
-                <option value="revenue">Revenue</option>
-              </select>
-              <input
-                className={smallClass}
-                value={line.description}
-                placeholder="Description"
-                onChange={(event) =>
-                  setSynergies(
-                    synergies.map((item) =>
-                      item.id === line.id ? { ...item, description: event.target.value } : item,
-                    ),
-                  )
-                }
-              />
-              <span className={`${smallClass} flex items-center gap-2`}>
-                <span className="text-stone-400">$</span>
-                <input
-                  className="w-full bg-transparent tabular-nums outline-none"
-                  value={line.amountRaw ? Number(line.amountRaw).toLocaleString('en-US') : ''}
-                  onChange={(event) =>
-                    setSynergies(
-                      synergies.map((item) =>
-                        item.id === line.id
-                          ? { ...item, amountRaw: event.target.value.replace(/\D/g, '').slice(0, 12) }
-                          : item,
-                      ),
-                    )
-                  }
-                />
-              </span>
-            </div>
-          ))}
-          {view.lines.map((line) => (
-            <p key={line.description} className="text-sm">
-              {line.description}{' '}
-              <QuietMoney cents={line.retained.cents} label="calculated" source={line.haircut.source} />
-            </p>
-          ))}
-          <p className="text-sm text-stone-500">Do not pay more.</p>
-        </>
-      ) : null}
+      <ul className="flex flex-col gap-2 text-stone-700">
+        {fit.notes.map((note) => (
+          <li key={note}>{note}</li>
+        ))}
+      </ul>
+      {synergies.lines.map((line) => (
+        <p key={line.description}>
+          {line.description}{' '}
+          <QuietMoney cents={line.retained.cents} label="calculated" source={line.haircut.source} />
+        </p>
+      ))}
+      <p className="text-stone-500">Do not pay more.</p>
     </section>
   );
 }
 
-function SmallField({
-  label,
-  value,
-  onChange,
-  prefix,
-  suffix,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  prefix?: string;
-  suffix?: string;
-}) {
+function Fact({ label, value, tag }: { label: string; value: string; tag: 'assumed' | 'calculated' }) {
   return (
-    <label className="flex flex-col gap-2 text-sm">
-      <span className="text-stone-500">{label}</span>
-      <span className={`${smallClass} flex items-center gap-2`}>
-        {prefix ? <span className="text-stone-400">{prefix}</span> : null}
-        <input
-          className="w-full bg-transparent outline-none"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-        />
-        {suffix ? <span className="text-stone-400">{suffix}</span> : null}
-      </span>
-    </label>
+    <div>
+      <dt className="text-stone-400">{label}</dt>
+      <dd>
+        {value} <Tag label={tag} />
+      </dd>
+    </div>
   );
 }
 
-function PercentField({
-  label,
-  value,
-  onChange,
-  hint,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (value: number | null) => void;
-  hint: 'assumed' | 'user-entered';
-}) {
-  return (
-    <label className="flex flex-col gap-2 text-sm">
-      <span className="flex items-center gap-2 text-stone-500">
-        {label} <Tag label={hint} />
-      </span>
-      <input
-        className={smallClass}
-        inputMode="decimal"
-        value={value == null ? '' : (value / 100).toString()}
-        onChange={(event) => {
-          const cleaned = cleanDecimal(event.target.value);
-          onChange(cleaned === '' ? null : Math.round(Number(cleaned) * 100));
-        }}
-      />
-    </label>
-  );
+function wholeDollars(cents: number) {
+  return Math.round(cents / 100) * 100;
 }
 
-function NumberField({
-  label,
-  value,
-  scale,
-  onChange,
-  hint,
-}: {
-  label: string;
-  value: number | null;
-  scale: number;
-  onChange: (value: number | null) => void;
-  hint: 'assumed' | 'user-entered';
-}) {
-  return (
-    <label className="flex flex-col gap-2 text-sm">
-      <span className="flex items-center gap-2 text-stone-500">
-        {label} <Tag label={hint} />
-      </span>
-      <input
-        className={smallClass}
-        inputMode="decimal"
-        value={value == null ? '' : (value / scale).toString()}
-        onChange={(event) => {
-          const cleaned = cleanDecimal(event.target.value);
-          onChange(cleaned === '' ? null : Math.round(Number(cleaned) * scale));
-        }}
-      />
-    </label>
-  );
+function shortMoney(cents: number) {
+  const dollars = Math.round(cents / 100);
+  const sign = dollars < 0 ? '-' : '';
+  const abs = Math.abs(dollars);
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000)}k`;
+  return `${sign}$${abs}`;
 }
-
-function cleanDecimal(value: string) {
-  const cleaned = value.replace(/[^0-9.]/g, '');
-  const [whole, ...rest] = cleaned.split('.');
-  if (!rest.length) return whole ?? '';
-  return `${whole}.${rest.join('').slice(0, 2)}`;
-}
-
-function formatTimes(thousandths: number) {
-  return `${(thousandths / 1_000).toFixed(1)}×`;
-}
-
-const smallClass = 'h-11 rounded-xl border border-stone-200 bg-white px-3';

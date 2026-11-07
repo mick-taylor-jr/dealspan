@@ -5,6 +5,8 @@ import { defaultDcf, runDcf } from './dcf';
 import { INDUSTRIES } from './industries';
 import { emptyLbo, runLbo } from './lbo';
 import { CITED_DEALS } from './precedents';
+import { buildCase } from './case';
+import { greenridgeIntake } from './greenridge';
 import { synergyView } from './synergy';
 
 describe('industries and precedents', () => {
@@ -84,6 +86,24 @@ describe('lbo', () => {
     assert.equal(run?.equityCents, 6_000_000);
     assert.equal((run?.equityCents ?? 0) + 4_000_000, 10_000_000);
     assert.ok((run?.moicThousandths ?? 0) > 0);
+  });
+});
+
+describe('demo case', () => {
+  it('builds DCF and LBO for the two hypothetical companies', () => {
+    const file = buildCase(greenridgeIntake());
+    assert.ok(file);
+    assert.equal(file?.payCents, 92_680_000);
+    assert.equal(file?.askCents, 114_800_000);
+    assert.equal(file?.supported.cents, 33_100_000);
+    assert.ok((file?.dcf.gordonEquityCents ?? 0) !== 0);
+    assert.equal(file?.dcf.years.length, 5);
+    assert.equal(file?.lbo.debtCents, 18_000_000);
+    assert.equal(file?.lbo.schedule.length, 5);
+    assert.ok((file?.lbo.moicThousandths ?? 0) > 0);
+    assert.equal(file?.fit.addon, true);
+    assert.equal(file?.synergies.upliftAuthorized, false);
+    assert.equal(file?.synergies.lines.length, 2);
   });
 });
 

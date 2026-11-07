@@ -33,8 +33,24 @@ export type AddBackInput = {
 
 export type Intake = {
   exampleId: 'greenridge' | null;
+  buyerName: string;
+  buyerDescription: string;
+  buyerIndustry: string;
+  buyerMarket: string;
+  buyerCustomers: string;
+  buyerRevenueRaw: string;
+  buyerEbitdaRaw: string;
+  buyerDebtRaw: string;
+  buyerCashRaw: string;
+  buyerGrowthRaw: string;
+  sharedCustomers: string;
+  territoryOverlap: string;
+  opsOverlap: string;
   targetName: string;
+  targetDescription: string;
   industry: string;
+  targetMarket: string;
+  targetCustomers: string;
   metric: Metric;
   fromYear: number;
   toYear: number;
@@ -45,6 +61,13 @@ export type Intake = {
   multipleRaw: string;
   revenueRaw: string;
   revenueUnit: Unit | '';
+  targetDebtRaw: string;
+  targetCashRaw: string;
+  targetGrowthRaw: string;
+  costSynergyRaw: string;
+  costSynergyName: string;
+  revenueSynergyRaw: string;
+  revenueSynergyName: string;
   reportedBasis: 'tax_return_profit' | 'pnl_profit';
   pnlProfitRaw: string;
   taxProfitRaw: string;
@@ -92,8 +115,31 @@ export function blankLine(): AddBackInput {
 export function emptyIntake(): Intake {
   return {
     exampleId: null,
+    buyerName: '',
+    buyerDescription: '',
+    buyerIndustry: '',
+    buyerMarket: '',
+    buyerCustomers: '',
+    buyerRevenueRaw: '',
+    buyerEbitdaRaw: '',
+    buyerDebtRaw: '',
+    buyerCashRaw: '',
+    buyerGrowthRaw: '',
+    sharedCustomers: '',
+    territoryOverlap: '',
+    opsOverlap: '',
     targetName: '',
+    targetDescription: '',
     industry: '',
+    targetMarket: '',
+    targetCustomers: '',
+    targetDebtRaw: '',
+    targetCashRaw: '',
+    targetGrowthRaw: '',
+    costSynergyRaw: '',
+    costSynergyName: '',
+    revenueSynergyRaw: '',
+    revenueSynergyName: '',
     metric: 'EBITDA',
     fromYear: 2023,
     toYear: 2025,

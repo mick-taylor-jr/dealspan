@@ -20,13 +20,24 @@ export function emptyLbo(): LboInput {
   };
 }
 
+export type LboYear = {
+  year: number;
+  openCents: number;
+  interestCents: number;
+  paydownCents: number;
+  closeCents: number;
+};
+
 export type LboRun = {
   equityCents: number;
+  debtCents: number;
+  priceCents: number;
   entryMultipleThousandths: number;
   exitEquityCents: number;
   moicThousandths: number;
   irrBps: number | null;
   endingDebtCents: number;
+  schedule: LboYear[];
 };
 
 function npv(rateBps: number, flows: number[]): number {
@@ -64,7 +75,7 @@ export function runLbo(input: LboInput, ebitdaCents: number, priceCents: number)
   const debt = Number(input.debtRaw) * 100;
   if (
     !Number.isSafeInteger(debt) ||
-    debt <= 0 ||
+    debt < 0 ||
     debt >= priceCents ||
     input.rateBps == null ||
     input.amortYears == null ||
@@ -79,16 +90,19 @@ export function runLbo(input: LboInput, ebitdaCents: number, priceCents: number)
   if (equity <= 0) return null;
   let balance = debt;
   let ebitda = ebitdaCents;
-  const mandatory = Math.round(debt / input.amortYears);
+  const mandatory = debt === 0 ? 0 : Math.round(debt / input.amortYears);
+  const schedule: LboYear[] = [];
   for (let year = 1; year <= input.holdYears; year += 1) {
+    const open = balance;
     ebitda = Math.round((ebitda * (10_000 + input.growthBps)) / 10_000);
     const interest = Math.round((balance * input.rateBps) / 10_000);
     const taxable = Math.max(0, ebitda - interest);
     const tax = Math.round((taxable * input.taxBps) / 10_000);
     const cadp = ebitda - interest - tax;
     const paydown = Math.min(balance, mandatory, Math.max(0, cadp));
-    if (cadp < paydown) return null;
+    if (cadp < 0) return null;
     balance -= paydown;
+    schedule.push({ year, openCents: open, interestCents: interest, paydownCents: paydown, closeCents: balance });
   }
   const exitEv = Math.round((ebitda * input.exitThousandths) / 1_000);
   const exitEquity = exitEv - balance;
@@ -98,7 +112,10 @@ export function runLbo(input: LboInput, ebitdaCents: number, priceCents: number)
   flows[input.holdYears] = exitEquity;
   return {
     equityCents: equity,
+    debtCents: debt,
+    priceCents,
     entryMultipleThousandths: Math.round((priceCents * 1_000) / ebitdaCents),
+    schedule,
     exitEquityCents: exitEquity,
     moicThousandths: Math.round((exitEquity * 1_000) / equity),
     irrBps: irrBps(flows),
