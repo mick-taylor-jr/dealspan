@@ -13,9 +13,7 @@ import { num, YEARS, type CompanyInput, type Intake, type SynergyInput } from '@
 
 const INDUSTRY_OPTIONS = INDUSTRIES.map((item) => ({ value: item.name, label: item.label }));
 
-/** `step` shows one part of the intake at a time (the /deal wizard). Leave it out to show everything. */
-export function IntakeScreen({ step }: { step?: number }) {
-  const show = (n: number) => step == null || step === n;
+export function IntakeScreen() {
   const { intake, setIntake, missing, loadDemo, clear, analysis } = useWorkspace();
   const update = (fn: (draft: Intake) => Intake) => setIntake((prev) => ({ ...fn(prev), demo: false }));
   const buyerMissing = missing.filter((m) => m.section === 'buyer').length;
@@ -24,79 +22,61 @@ export function IntakeScreen({ step }: { step?: number }) {
 
   return (
     <div className="pb-32">
-      {step == null ? (
-        <Hero onDemo={loadDemo} demo={intake.demo} />
-      ) : step === 0 ? (
-        <DemoBar onDemo={loadDemo} demo={intake.demo} />
-      ) : null}
+      <Hero onDemo={loadDemo} demo={intake.demo} />
 
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-5 pt-10 sm:px-8">
-        {step == null ? (
-          <DocumentImport />
-        ) : step === 0 ? (
-          <DocumentImport only="buyer" />
-        ) : step === 1 ? (
-          <DocumentImport only="target" />
-        ) : null}
-        <div className={`grid gap-6 ${step == null ? 'lg:grid-cols-2' : ''}`}>
-          {show(0) ? (
-            <CompanyCard
-              role="buyer"
-              title="Your company"
-              subtitle="The acquirer. Used for synergies, the combined company and how you pay."
-              company={intake.buyer}
-              missing={buyerMissing}
-              onChange={(buyer) => update((prev) => ({ ...prev, buyer }))}
+        <DocumentImport />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <CompanyCard
+            role="buyer"
+            title="Your company"
+            subtitle="The acquirer. Used for synergies, the combined company and how you pay."
+            company={intake.buyer}
+            missing={buyerMissing}
+            onChange={(buyer) => update((prev) => ({ ...prev, buyer }))}
+          />
+          <CompanyCard
+            role="target"
+            title="Company you want to buy"
+            subtitle="The target. Every valuation model runs on these numbers."
+            company={intake.target}
+            missing={targetMissing}
+            onChange={(company) => update((prev) => ({ ...prev, target: { ...prev.target, ...company } }))}
+          >
+            <TextInput
+              label="Type of work"
+              value={intake.target.subsector}
+              suggestions={subsectorsFor(intake.target.industry)}
+              onChange={(subsector) => update((p) => ({ ...p, target: { ...p.target, subsector } }))}
+              hint="Used to rank past sales by how close they are to this company. Pick from the list for a match, or type your own."
             />
-          ) : null}
-          {show(1) ? (
-            <CompanyCard
-              role="target"
-              title="Company you want to buy"
-              subtitle="The target. Every valuation model runs on these numbers."
-              company={intake.target}
-              missing={targetMissing}
-              onChange={(company) => update((prev) => ({ ...prev, target: { ...prev.target, ...company } }))}
-            >
-              <TextInput
-                label="Type of work"
-                value={intake.target.subsector}
-                suggestions={subsectorsFor(intake.target.industry)}
-                onChange={(subsector) => update((p) => ({ ...p, target: { ...p.target, subsector } }))}
-                hint="Used to rank past sales by how close they are to this company. Pick from the list for a match, or type your own."
+            <div className="grid gap-4 sm:grid-cols-3">
+              <MoneyInput
+                label="EBITDA the seller claims"
+                value={intake.target.sellerEbitda}
+                onChange={(sellerEbitda) => update((p) => ({ ...p, target: { ...p.target, sellerEbitda } }))}
+                hint="Optional. Compared with the 2025 EBITDA above."
               />
-              <div className="grid gap-4 sm:grid-cols-3">
-                <MoneyInput
-                  label="EBITDA the seller claims"
-                  value={intake.target.sellerEbitda}
-                  onChange={(sellerEbitda) =>
-                    update((p) => ({ ...p, target: { ...p.target, sellerEbitda } }))
-                  }
-                  hint="Optional. Compared with the 2025 EBITDA above."
-                />
-                <MoneyInput
-                  label="Asking price"
-                  value={intake.target.askingPrice}
-                  onChange={(askingPrice) => update((p) => ({ ...p, target: { ...p.target, askingPrice } }))}
-                  hint="Optional."
-                />
-                <NumberInput
-                  label="EBITDA margin by 2030"
-                  suffix="%"
-                  value={intake.target.marginTarget}
-                  onChange={(marginTarget) =>
-                    update((p) => ({ ...p, target: { ...p.target, marginTarget } }))
-                  }
-                  hint="Optional. Blank keeps today’s margin."
-                />
-              </div>
-            </CompanyCard>
-          ) : null}
+              <MoneyInput
+                label="Asking price"
+                value={intake.target.askingPrice}
+                onChange={(askingPrice) => update((p) => ({ ...p, target: { ...p.target, askingPrice } }))}
+                hint="Optional."
+              />
+              <NumberInput
+                label="EBITDA margin by 2030"
+                suffix="%"
+                value={intake.target.marginTarget}
+                onChange={(marginTarget) => update((p) => ({ ...p, target: { ...p.target, marginTarget } }))}
+                hint="Optional. Blank keeps today’s margin."
+              />
+            </div>
+          </CompanyCard>
         </div>
 
-        {show(2) ? <DealSection intake={intake} missing={dealMissing} update={update} /> : null}
-        {show(3) ? <SynergySection intake={intake} update={update} /> : null}
-        {show(4) ? <FitSection intake={intake} update={update} /> : null}
+        <DealSection intake={intake} missing={dealMissing} update={update} />
+        <SynergySection intake={intake} update={update} />
+        <FitSection intake={intake} update={update} />
 
         <div className="flex justify-start">
           <button
@@ -110,26 +90,6 @@ export function IntakeScreen({ step }: { step?: number }) {
       </div>
 
       <RunBar count={missing.length} ready={analysis != null} firstMissing={missing[0]} />
-    </div>
-  );
-}
-
-function DemoBar({ onDemo, demo }: { onDemo: () => void; demo: boolean }) {
-  return (
-    <div className="bg-pine text-white">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8">
-        <p className="text-sm text-white/80">
-          <span className="font-semibold text-white">Just looking?</span> Fill both companies with a labeled
-          hypothetical deal and click through.
-        </p>
-        <button
-          type="button"
-          onClick={onDemo}
-          className="h-10 bg-white px-5 text-sm font-semibold text-pine hover:bg-white/90"
-        >
-          {demo ? 'Demo loaded' : 'Load the demo deal'}
-        </button>
-      </div>
     </div>
   );
 }
@@ -169,7 +129,7 @@ function DealDiagram({ demo }: { demo: boolean }) {
     <div className="flex flex-col gap-3 self-center">
       <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-3">
         <div className="rounded-xl border border-white/15 bg-white/5 p-4">
-          <div className="mb-2 h-1 w-8 rounded-full bg-[#8fb0e8]" />
+          <div className="mb-2 h-1 w-8 rounded-full bg-[#4fc79a]" />
           <div className="text-sm font-semibold">{demo ? 'Northline Grounds Co.' : 'Your company'}</div>
           <p className="mt-1 text-xs leading-5 text-white/60">
             {demo
@@ -181,7 +141,7 @@ function DealDiagram({ demo }: { demo: boolean }) {
           +
         </div>
         <div className="rounded-xl border border-white/15 bg-white/5 p-4">
-          <div className="mb-2 h-1 w-8 rounded-full bg-[#e8b85c]" />
+          <div className="mb-2 h-1 w-8 rounded-full bg-[#e2b04a]" />
           <div className="text-sm font-semibold">{demo ? 'Greenridge Landscape Co.' : 'The target'}</div>
           <p className="mt-1 text-xs leading-5 text-white/60">
             {demo
@@ -218,11 +178,11 @@ function SectionHead({ title, note, missing }: { title: string; note: string; mi
 
 function Progress({ missing }: { missing: number }) {
   return missing === 0 ? (
-    <span className="shrink-0 whitespace-nowrap rounded-full bg-ok-soft px-2.5 py-1 text-xs font-medium text-[#0e6145]">
+    <span className="shrink-0 whitespace-nowrap rounded-full bg-buyer-soft px-2.5 py-1 text-xs font-medium text-[#0e6145]">
       Complete
     </span>
   ) : (
-    <span className="shrink-0 whitespace-nowrap rounded-full bg-[#eef1f5] px-2.5 py-1 text-xs font-medium text-muted">
+    <span className="shrink-0 whitespace-nowrap rounded-full bg-[#eef1ee] px-2.5 py-1 text-xs font-medium text-muted">
       {missing} to fill
     </span>
   );
@@ -727,14 +687,14 @@ function RunBar({
         {ready ? (
           <Link
             href="/results"
-            className="inline-flex h-11 items-center rounded-full bg-signal px-6 text-sm font-semibold text-white hover:bg-signal/90"
+            className="inline-flex h-11 items-center rounded-full bg-pine px-6 text-sm font-semibold text-white hover:bg-pine-2"
           >
             Run the analysis
           </Link>
         ) : (
           <span
             aria-disabled
-            className="inline-flex h-11 cursor-not-allowed items-center rounded-full bg-[#cfd5df] px-6 text-sm font-semibold text-white"
+            className="inline-flex h-11 cursor-not-allowed items-center rounded-full bg-[#cfd6d1] px-6 text-sm font-semibold text-white"
           >
             Run the analysis
           </span>

@@ -31,14 +31,6 @@ const COPY: Record<Role, { title: string; body: string; paste: string; accent: s
   },
 };
 
-const INTRO: Record<Role | 'both', string> = {
-  buyer:
-    'Skip the typing. Drop your company’s financial statements and Claude fills the blank fields below, showing the line every number came from.',
-  target:
-    'Skip the typing. Drop the target’s listing, CIM or P&L and Claude fills the blank fields below, showing the line every number came from.',
-  both: 'Skip the typing. Drop your company’s financial statements and the target’s CIM or P&L. Claude fills each company’s blank fields and shows the line every number came from. You check each value before anything runs.',
-};
-
 const recordKey = (role: Role): 'importedBuyer' | 'imported' =>
   role === 'buyer' ? 'importedBuyer' : 'imported';
 
@@ -47,7 +39,7 @@ const recordKey = (role: Role): 'importedBuyer' | 'imported' =>
  * CIM or P&L. Claude fills each company's blank fields and shows the line each number came from.
  * Hidden unless the server has an Anthropic key.
  */
-export function DocumentImport({ only }: { only?: Role } = {}) {
+export function DocumentImport() {
   const [config, setConfig] = useState<Config | null>(null);
   const [code, setCode] = useState('');
 
@@ -69,9 +61,13 @@ export function DocumentImport({ only }: { only?: Role } = {}) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="max-w-2xl">
           <h2 id="import-title" className="text-xl font-semibold tracking-tight">
-            {only ? 'Start from a document' : 'Start from documents'}
+            Start from documents
           </h2>
-          <p className="mt-1 text-sm leading-6 text-muted">{INTRO[only ?? 'both']}</p>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Skip the typing. Drop your company’s financial statements and the target’s CIM or P&amp;L. Claude
+            fills each company’s blank fields and shows the line every number came from. You check each value
+            before anything runs.
+          </p>
         </div>
         {config.needsCode ? (
           <label className="flex items-center gap-2 text-sm text-muted">
@@ -86,9 +82,9 @@ export function DocumentImport({ only }: { only?: Role } = {}) {
         ) : null}
       </div>
 
-      <div className={`mt-5 grid items-start gap-5 ${only ? '' : 'lg:grid-cols-2'}`}>
-        {only !== 'target' ? <ImportPanel role="buyer" code={config.needsCode ? code : null} /> : null}
-        {only !== 'buyer' ? <ImportPanel role="target" code={config.needsCode ? code : null} /> : null}
+      <div className="mt-5 grid items-start gap-5 lg:grid-cols-2">
+        <ImportPanel role="buyer" code={config.needsCode ? code : null} />
+        <ImportPanel role="target" code={config.needsCode ? code : null} />
       </div>
 
       <p className="mt-4 text-xs leading-5 text-muted">
@@ -265,7 +261,7 @@ function Review({ role, record }: { role: Role; record: ImportRecord }) {
 
   if (record.checked) {
     return (
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-ok-soft px-4 py-3 text-sm">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-buyer-soft px-4 py-3 text-sm">
         <span className="text-[#0e6145]">
           Checked {record.filled.length} values from <span className="font-medium">{record.source}</span>.
         </span>
@@ -310,7 +306,7 @@ function Review({ role, record }: { role: Role; record: ImportRecord }) {
                     {state === 'cleared' ? null : displayValue({ key: field.key, value: now }, role)}
                     <span
                       className={`inline-flex h-5 items-center rounded px-1.5 text-[11px] font-medium ${
-                        state === 'extracted' ? 'bg-warn-soft text-[#7a4f00]' : 'bg-[#eef1f5] text-muted'
+                        state === 'extracted' ? 'bg-warn-soft text-[#7a4f00]' : 'bg-[#eef1ee] text-muted'
                       }`}
                     >
                       {state === 'extracted' ? 'extracted' : state === 'edited' ? 'you edited' : 'cleared'}
