@@ -32,7 +32,7 @@ export function Field({
 }) {
   const id = useId();
   return (
-    <div className={`flex flex-col gap-1.5 ${className}`}>
+    <div className={`flex min-w-0 flex-col gap-1.5 ${className}`}>
       <label htmlFor={id} className="text-sm font-medium text-ink">
         {label}
       </label>
@@ -115,7 +115,7 @@ export function SelectInput({
       {(id) => (
         <select
           id={id}
-          className="h-10 rounded-lg border border-line bg-white px-2.5 text-sm outline-none focus:border-ink/40"
+          className="h-10 w-full min-w-0 rounded-lg border border-line bg-white px-2.5 text-sm outline-none focus:border-ink/40"
           value={value}
           onChange={(event) => onChange(event.target.value)}
         >

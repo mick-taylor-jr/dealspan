@@ -1,3 +1,5 @@
+import type { ImportRecord } from '@/lib/extract';
+
 export type Label = 'user-entered' | 'calculated' | 'assumed' | 'cited';
 
 export const YEARS = [2023, 2024, 2025] as const;
@@ -72,6 +74,8 @@ export type Intake = {
   synergies: SynergyInput[];
   integrationCost: string;
   fit: FitInput;
+  /** What the last document import filled in, so the user can check each value. */
+  imported?: ImportRecord;
 };
 
 export function emptyCompany(): CompanyInput {
