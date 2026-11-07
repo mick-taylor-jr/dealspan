@@ -52,8 +52,8 @@ export function AiStatus({ ai, compact }: { ai: AiState; compact?: boolean }) {
     ai.status === 'loading'
       ? 'bg-syn-soft text-[#2a5c94]'
       : ai.status === 'ok'
-        ? 'bg-buyer-soft text-[#0e6145]'
-        : 'bg-[#eef1ee] text-muted';
+        ? 'bg-ok-soft text-[#0e6145]'
+        : 'bg-[#eef1f5] text-muted';
   return (
     <p
       className={`${compact ? 'mt-3 ' : ''}flex items-start gap-2 rounded-lg px-3 py-2 text-xs leading-5 ${tone}`}
@@ -153,7 +153,7 @@ export function PrecedentsTab({ a, ai }: { a: Analysis; ai: AiState }) {
                     </div>
                   </div>
                   <div className="col-span-2 flex items-center gap-2 sm:col-span-1">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#e8ece9]">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#e6eaf0]">
                       <div
                         className="h-full rounded-full bg-pine"
                         style={{ width: `${Math.min(100, d.score)}%` }}
@@ -405,10 +405,10 @@ export function FinancingTab({ a }: { a: Analysis }) {
 }
 
 const SCENARIO_COLOR: Record<Scenario['id'], string> = {
-  offer: '#17201c',
-  good: '#14845e',
-  average: '#8a978f',
-  bad: '#b4432e',
+  offer: '#14213d',
+  good: '#16835d',
+  average: '#718096',
+  bad: '#d62839',
 };
 
 function ScenarioFinancing({ a }: { a: Analysis }) {

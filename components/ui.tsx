@@ -2,10 +2,10 @@ import type { ReactNode } from 'react';
 import type { Label } from '@/lib/types';
 
 const LABEL_STYLE: Record<Label, string> = {
-  'user-entered': 'bg-[#eef1ee] text-muted',
+  'user-entered': 'bg-[#eef1f5] text-muted',
   calculated: 'bg-syn-soft text-[#2a5c94]',
   assumed: 'bg-warn-soft text-[#7a4f00]',
-  cited: 'bg-buyer-soft text-[#0e6145]',
+  cited: 'bg-ok-soft text-[#0e6145]',
 };
 
 export function Prov({ label }: { label: Label }) {
@@ -82,9 +82,9 @@ export function Swatch({ color }: { color: string }) {
 }
 
 export const COLORS = {
-  buyer: '#14845e',
-  target: '#b07a10',
-  syn: '#3d7dc4',
-  ink: '#17201c',
-  line: '#dde3de',
+  buyer: '#2e5aac',
+  target: '#c98a1e',
+  syn: '#4fa3d9',
+  ink: '#14213d',
+  line: '#dce1e8',
 };

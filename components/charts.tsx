@@ -163,7 +163,7 @@ function PriceRow({ prices, x }: { prices: PricePoint[]; x: (v: number) => numbe
     <div className="relative h-20 border-b border-line/70">
       <span className="absolute left-0 top-1 text-xs font-medium sm:hidden">Deal prices</span>
       <div
-        className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[#dfe5e1]"
+        className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[#dde3ec]"
         style={{ left: `${x(lo)}%`, width: `${x(hi) - x(lo)}%` }}
       />
       {sorted.map((p, i) => (
