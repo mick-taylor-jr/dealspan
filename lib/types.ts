@@ -76,6 +76,8 @@ export type Intake = {
   fit: FitInput;
   /** What the last document import filled in, so the user can check each value. */
   imported?: ImportRecord;
+  /** Same, for the buyer's own financial statements. */
+  importedBuyer?: ImportRecord;
 };
 
 export function emptyCompany(): CompanyInput {

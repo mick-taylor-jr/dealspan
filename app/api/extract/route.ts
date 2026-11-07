@@ -1,6 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { connection, NextResponse, type NextRequest } from 'next/server';
-import { EXTRACT_TOOL_NAME, extractionSystemPrompt, extractionTool, sanitizeExtraction } from '@/lib/extract';
+import {
+  EXTRACT_TOOL_NAME,
+  extractionSystemPrompt,
+  extractionTool,
+  parseRole,
+  sanitizeExtraction,
+} from '@/lib/extract';
 import { anthropicKey } from '@/lib/ai-key';
 
 /**
@@ -64,6 +70,7 @@ export async function POST(req: NextRequest) {
   const required = process.env.DEALSPAN_AI_ACCESS_CODE;
   if (required && form.get('code') !== required) return fail(401, 'That access code is not right.');
 
+  const role = parseRole(form.get('role'));
   const file = form.get('file');
   const pasted = typeof form.get('text') === 'string' ? (form.get('text') as string).trim() : '';
 
@@ -112,15 +119,21 @@ export async function POST(req: NextRequest) {
     const message = await client.messages.create({
       model: process.env.DEALSPAN_AI_MODEL || DEFAULT_MODEL,
       max_tokens: 4000,
-      system: extractionSystemPrompt(),
-      tools: [extractionTool()],
+      system: extractionSystemPrompt(role),
+      tools: [extractionTool(role)],
       tool_choice: { type: 'tool', name: EXTRACT_TOOL_NAME },
       messages: [
         {
           role: 'user',
           content: [
             documentBlock,
-            { type: 'text', text: 'Fill in the target company fields this document states.' },
+            {
+              type: 'text',
+              text:
+                role === 'buyer'
+                  ? 'These are the buyer’s own financial statements. Fill in the company fields they state.'
+                  : 'Fill in the target company fields this document states.',
+            },
           ],
         },
       ],
@@ -134,7 +147,7 @@ export async function POST(req: NextRequest) {
     );
     if (!call || call.type !== 'tool_use') return fail(502, 'Could not read that document. Try again.');
 
-    return NextResponse.json({ source, ...sanitizeExtraction(call.input) });
+    return NextResponse.json({ source, role, ...sanitizeExtraction(call.input, role) });
   } catch (error) {
     if (error instanceof Anthropic.APIError) {
       console.error('extract: Anthropic error', error.status, error.message);
