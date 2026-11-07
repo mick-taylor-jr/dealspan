@@ -30,3 +30,11 @@ pnpm lint
 pnpm typecheck
 pnpm build
 ```
+
+## AI precedent search (optional)
+
+Set `ANTHROPIC_API_KEY` in Vercel (Settings → Environment Variables) to let the Precedents tab ask Claude, with web
+search, for more comparable sales. The key stays on the server (`app/api/precedents`). A sale is kept only if its source
+link came back in the search results and it lists both a price and an EBITDA; kept sales are scored with the same 1–100
+rules and marked "Found by AI". Without the key the app uses the 76-deal workbook only. `DEALSPAN_AI_MODEL` overrides the
+model (default `claude-sonnet-5-5`).

@@ -6,6 +6,7 @@ import { COLORS, Panel, Prov, Stat } from '@/components/ui';
 import { DEALS_SOURCE } from '@/lib/deals';
 import { FINANCING_SOURCES, SBA } from '@/lib/financing';
 import { pct, times, usd, usdShort } from '@/lib/format';
+import type { AiState } from '@/components/workspace';
 import type { Analysis, Scenario } from '@/lib/model';
 
 /* ---------- Shared intro block ---------- */
@@ -35,13 +36,44 @@ function SourceLink({ href, children }: { href: string; children: ReactNode }) {
 
 /* ---------- Precedents ---------- */
 
-export function PrecedentsTab({ a }: { a: Analysis }) {
+export function AiStatus({ ai, compact }: { ai: AiState; compact?: boolean }) {
+  if (ai.status === 'idle') return null;
+  const text =
+    ai.status === 'loading'
+      ? 'AI is searching the web for more comparable sales. This takes about a minute; the numbers update when it finishes.'
+      : ai.status === 'ok'
+        ? ai.deals.length
+          ? `AI found ${ai.deals.length} more sale${ai.deals.length === 1 ? '' : 's'} with a published price and profit (${ai.searches} web searches). They are included and marked “Found by AI”.`
+          : `AI searched the web (${ai.searches} searches) but found no new sales with a published price and profit.`
+        : ai.status === 'not-configured'
+          ? 'AI search is off until an Anthropic API key is added in Vercel. Showing the deal database only.'
+          : (ai.message ?? 'The AI search did not finish. Showing the deal database only.');
+  const tone =
+    ai.status === 'loading'
+      ? 'bg-syn-soft text-[#2a5c94]'
+      : ai.status === 'ok'
+        ? 'bg-buyer-soft text-[#0e6145]'
+        : 'bg-[#eef1ee] text-muted';
+  return (
+    <p
+      className={`${compact ? 'mt-3 ' : ''}flex items-start gap-2 rounded-lg px-3 py-2 text-xs leading-5 ${tone}`}
+      aria-live="polite"
+    >
+      {ai.status === 'loading' ? (
+        <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 animate-pulse rounded-full bg-current" />
+      ) : null}
+      {text}
+    </p>
+  );
+}
+
+export function PrecedentsTab({ a, ai }: { a: Analysis; ai: AiState }) {
   const m = a.market;
   const ranked = a.ranked;
   const rows = ranked.map((d, i) => ({
     id: `${d.target}-${d.date}`,
     name: d.target,
-    sub: `${Math.round(d.score)}/100 match, ${d.date.slice(0, 4)}, ${usdShort(d.ebitda)} profit`,
+    sub: `${Math.round(d.score)}/100 match, ${d.date.slice(0, 4)}, ${usdShort(d.ebitda)} profit${d.aiFound ? ', found by AI' : ''}`,
     multiple: d.multiple,
     rank: i + 1,
     score: d.score,
@@ -51,9 +83,10 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
   return (
     <>
       <TabIntro
-        what="Every sale in this industry in our database, ranked by how close each one is to the company you want to buy, with the price each buyer paid as a multiple of yearly profit (EBITDA)."
+        what="Sales of businesses like this one, from our deal database plus a live AI web search, ranked by how close each is to the company you want to buy, with the price paid as a multiple of yearly profit (EBITDA)."
         why="The closest matches tell you the most about what this business should sell for. Deals far down the list are a different size or kind of business, so weigh them less."
       />
+      <AiStatus ai={ai} />
       {ranked.length ? (
         <>
           <div className="grid gap-6 sm:grid-cols-3">
@@ -106,9 +139,15 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
                     <div className="text-sm font-medium">
                       <span className="mr-2 text-faint sm:hidden">#{i + 1}</span>
                       {d.target}
+                      {d.aiFound ? (
+                        <span className="ml-2 rounded bg-syn-soft px-1.5 py-0.5 text-[11px] font-medium text-[#2a5c94]">
+                          Found by AI
+                        </span>
+                      ) : null}
                     </div>
                     <div className="text-xs leading-5 text-muted">
-                      {d.subsector}. Bought by {d.acquirer}. {d.reasons.join(', ')}
+                      {d.subsector ? `${d.subsector}. ` : ''}Bought by {d.acquirer}.
+                      {d.aiFound && d.notes ? ` ${d.notes}.` : ''} {d.reasons.join(', ')}
                       {d.parts.size === 0 ? ', too far from your size to compare well' : ''}.{' '}
                       <SourceLink href={d.source}>Source</SourceLink>
                     </div>
@@ -184,9 +223,11 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
           </table>
         </div>
         <p className="mt-4 text-xs leading-5 text-faint">
-          {DEALS_SOURCE}. Earnouts are left out of price. Partial purchases are scaled to 100%. Foreign deals
-          are converted to US$ at rounded 2023–2026 average rates (an assumption). Sales without a published
-          profit can’t be scored or charted, so they are listed last.
+          {DEALS_SOURCE}. Sales marked “Found by AI” come from a live web search by Claude; each is kept only
+          if its source link came back in the search results and it lists both a price and a profit. Check the
+          source before relying on one. Earnouts are left out of price. Partial purchases are scaled to 100%.
+          Foreign deals are converted to US$ at rounded 2023–2026 average rates (an assumption). Sales without
+          a published profit can’t be scored or charted, so they are listed last.
         </p>
       </details>
     </>

@@ -27,7 +27,9 @@
 
 body {
   font-family: var(--font-sans);
-  font-feature-settings: 'tnum' 1, 'ss01' 1;
+  font-feature-settings:
+    'tnum' 1,
+    'ss01' 1;
 }
 
 :focus-visible {

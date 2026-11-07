@@ -22,6 +22,8 @@ export type DealRecord = {
   profitPeriod: string;
   notes: string;
   source: string;
+  /** True for sales found by the AI web search rather than the workbook. */
+  aiFound?: boolean;
 };
 
 export const DEALS_SOURCE =
