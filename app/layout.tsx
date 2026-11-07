@@ -5,7 +5,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Dealspan',
-  description: 'Lender-supportable pricing for $1–50M acquisitions.',
+  description: 'Buyer earnings bridge. Seller claimed earnings versus the dollars the documents support.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

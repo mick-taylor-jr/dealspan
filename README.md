@@ -1,8 +1,8 @@
 # Dealspan
 
-Starter app for Dealspan. This repository is an empty Next.js application using the App Router, TypeScript, and Tailwind CSS, ready to deploy on Vercel.
+Buyer earnings bridge for a small acquisition. The buyer types the seller’s claimed earnings, the add-backs, and the proof they have (P&L, tax return, bank deposits). The screen then shows what the seller says, what the documents support, and why each line was accepted, rejected, or cut.
 
-The homepage is placeholder copy only. There is no intake form, results page, pricing engine, or external service.
+This is a discussion aid for a searcher or lender. It is not a formal quality-of-earnings report, not a valuation opinion, and not a credit decision or commitment to lend.
 
 ## Stack
 
@@ -11,6 +11,8 @@ The homepage is placeholder copy only. There is no intake form, results page, pr
 - Tailwind CSS
 - ESLint
 - pnpm
+
+Money math is deterministic TypeScript in integer cents. There is no LLM, no API key, and no environment variable.
 
 ## Run locally
 
@@ -21,9 +23,10 @@ pnpm install
 pnpm dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000 and choose **Load Greenridge Landscape Co. example**. That case is a labeled hypothetical, not a real company. Files attached in the browser stay in the tab and are not uploaded.
 
 ```bash
+pnpm test
 pnpm lint
 pnpm typecheck
 pnpm build
@@ -31,4 +34,4 @@ pnpm build
 
 ## Deploy
 
-Import this GitHub repository in Vercel. Next.js is detected automatically. No environment variables or API keys are required.
+Import this GitHub repository in Vercel. Next.js is detected automatically. No environment variables are required.
