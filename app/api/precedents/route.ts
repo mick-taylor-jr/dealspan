@@ -13,7 +13,7 @@ import { DEALS } from '@/lib/deals';
 
 export const maxDuration = 120;
 
-const MODEL = process.env.DEALSPAN_AI_MODEL || 'claude-sonnet-5-5';
+const MODEL = process.env.DEALSPAN_PRECEDENTS_MODEL || 'claude-sonnet-5-5';
 const TOOLS = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }];
 const SYSTEM =
   'You are a research analyst finding precedent transactions for small-business acquisitions. ' +
@@ -27,6 +27,20 @@ export type AiResponse = {
   searches: number;
   message?: string;
 };
+
+// Best-effort limit per server instance; the Anthropic spend limit is the real backstop.
+const WINDOW_MS = 60 * 60 * 1000;
+const PER_WINDOW = 6;
+const hits = new Map<string, number[]>();
+
+function rateLimited(ip: string): boolean {
+  const now = Date.now();
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
+  recent.push(now);
+  hits.set(ip, recent);
+  if (hits.size > 5000) hits.clear();
+  return recent.length > PER_WINDOW;
+}
 
 // Per-instance cache so the same target is not searched twice in a session (6 hours).
 const cache = new Map<string, CacheEntry>();
@@ -67,6 +81,17 @@ export async function POST(request: Request) {
   const ck = cacheKey(query);
   const hit = cache.get(ck);
   if (hit && Date.now() - hit.at < TTL) return NextResponse.json(hit.body);
+
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
+  if (rateLimited(ip)) {
+    return NextResponse.json<AiResponse>({
+      status: 'error',
+      deals: [],
+      rejected: 0,
+      searches: 0,
+      message: 'Too many AI searches in the last hour. Showing database deals only.',
+    });
+  }
 
   const existing = DEALS.filter((d) => d.industry === query.industry).map((d) => d.target);
   const messages: Array<{ role: 'user' | 'assistant'; content: unknown }> = [

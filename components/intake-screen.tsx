@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { DocumentImport } from '@/components/document-import';
 import { BareMoney, Choice, MoneyInput, NumberInput, SelectInput, TextInput } from '@/components/fields';
 import { useWorkspace } from '@/components/workspace';
 import { DEMO_STORIES } from '@/lib/demo';
@@ -24,6 +25,7 @@ export function IntakeScreen() {
       <Hero onDemo={loadDemo} demo={intake.demo} />
 
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-5 pt-10 sm:px-8">
+        <DocumentImport />
         <div className="grid gap-6 lg:grid-cols-2">
           <CompanyCard
             role="buyer"
