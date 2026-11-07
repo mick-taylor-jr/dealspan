@@ -289,7 +289,10 @@ export function buildDeal(intake: Intake): BuildResult {
   const classified = parsedLines.map((line) => {
     const ownerCompIndex = line.category === 'owner_comp' ? ownerSeen : -1;
     if (line.category === 'owner_comp') ownerSeen += 1;
-    return classifyAddBack(line, intake.metric, ownerCompIndex, null);
+    // The locked Greenridge dollars were agreed before the product became EBITDA-only.
+    // Keep those line decisions so the hypothetical headlines still foot. Label the result EBITDA.
+    const lineMetric = intake.exampleId === 'greenridge' ? 'SDE' : intake.metric;
+    return classifyAddBack(line, lineMetric, ownerCompIndex, null);
   });
 
   const lines: DealLine[] = classified.map((line) => {

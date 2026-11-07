@@ -151,8 +151,10 @@ export function greenridgeIntake(): Intake {
   return {
     exampleId: 'greenridge',
     targetName: 'Greenridge Landscape Co.',
-    industry: 'landscaping',
-    metric: 'SDE',
+    industry: 'Construction / mechanical services',
+    metric: 'EBITDA',
+    fromYear: 2023,
+    toYear: 2025,
     claimPeriod: '2023–2025',
     claimedEarningsRaw: '410000',
     claimedEarningsUnit: 'USD',

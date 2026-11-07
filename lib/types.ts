@@ -36,6 +36,8 @@ export type Intake = {
   targetName: string;
   industry: string;
   metric: Metric;
+  fromYear: number;
+  toYear: number;
   claimPeriod: string;
   claimedEarningsRaw: string;
   claimedEarningsUnit: Unit | '';
@@ -92,7 +94,9 @@ export function emptyIntake(): Intake {
     exampleId: null,
     targetName: '',
     industry: '',
-    metric: 'SDE',
+    metric: 'EBITDA',
+    fromYear: 2023,
+    toYear: 2025,
     claimPeriod: '',
     claimedEarningsRaw: '',
     claimedEarningsUnit: 'USD',

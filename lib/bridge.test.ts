@@ -37,6 +37,8 @@ describe('Greenridge Landscape Co.', () => {
     assert.equal(deal.footing, 'pass');
     assert.equal(deal.managementAdjusted.cents, CLAIMED);
     assert.equal(deal.managementAdjusted.label, 'calculated');
+    assert.equal(deal.metric, 'EBITDA');
+    assert.equal(deal.exampleId, 'greenridge');
   });
 
   it('accepts fair add-backs and rejects the inflated ones', () => {
@@ -136,6 +138,7 @@ describe('add-back rules', () => {
 
   it('rejects a second owner and a thin line', () => {
     const intake = emptyIntake();
+    intake.metric = 'SDE';
     intake.taxProfitRaw = '100000';
     intake.claimedEarningsRaw = '100000';
     intake.lines = [
