@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { demoIntake } from '@/lib/demo';
+import { sampleIntake } from '@/lib/sample';
 import { analyze, findMissing, type Analysis, type Missing } from '@/lib/model';
 import { emptyIntake, type Intake } from '@/lib/types';
 
@@ -11,6 +12,8 @@ type WorkspaceValue = {
   missing: Missing[];
   analysis: Analysis | null;
   loadDemo: () => void;
+  /** The fictional Buckeye deal the landing page shows. */
+  loadSample: () => void;
   clear: () => void;
   ready: boolean;
 };
@@ -66,6 +69,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       missing,
       analysis,
       loadDemo: () => setIntake(demoIntake()),
+      loadSample: () => setIntake(sampleIntake()),
       clear: () => setIntake(emptyIntake()),
       ready,
     }),

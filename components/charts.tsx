@@ -43,7 +43,7 @@ export function FootballField({
   const x = (v: number) => ((v - lo) / (hi - lo)) * 100;
   return (
     <div>
-      <div className="mb-9 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
+      <div className="mb-2 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
         <span className="flex items-center gap-2">
           <Swatch color={COLORS.target} /> Standalone value of the target
         </span>
@@ -60,18 +60,19 @@ export function FootballField({
           </span>
         ) : null}
       </div>
-      <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-[minmax(7.5rem,13rem)_1fr]">
-        <div className="hidden flex-col sm:flex">
+      <div className="-mx-1 overflow-x-auto px-1 pt-7">
+      <div className="grid min-w-[640px] grid-cols-[minmax(7.5rem,13rem)_1fr] gap-x-4">
+        <div className="flex flex-col">
           {rows.map((row) => (
             <div key={row.id} className="flex h-16 flex-col justify-center pr-2">
               <span className="text-sm font-medium leading-5">{row.name}</span>
-              <span className="text-xs leading-4 text-faint">{row.detail}</span>
+              <span className="text-xs leading-4 text-muted">{row.detail}</span>
             </div>
           ))}
           {prices.length ? (
-            <div className="hidden h-20 flex-col justify-center pr-2 sm:flex">
+            <div className="flex h-20 flex-col justify-center pr-2">
               <span className="text-sm font-medium leading-5">Deal prices</span>
-              <span className="text-xs leading-4 text-faint">
+              <span className="text-xs leading-4 text-muted">
                 Good, average and bad, from the methods above
               </span>
             </div>
@@ -83,7 +84,7 @@ export function FootballField({
             return (
               <div
                 key={row.id}
-                className="relative h-16 border-b border-line/70 outline-none"
+                className="relative h-16 border-b border-line outline-none"
                 onMouseEnter={() => setHover(row.id)}
                 onMouseLeave={() => setHover(null)}
                 onFocus={() => setHover(row.id)}
@@ -91,9 +92,8 @@ export function FootballField({
                 tabIndex={0}
                 aria-label={`${row.name}: ${usd(row.low)} to ${usd(row.high)}`}
               >
-                <span className="absolute -left-10 top-1 text-xs font-medium sm:hidden">{row.name}</span>
                 <div
-                  className="absolute top-[62%] h-6 -translate-y-1/2 rounded transition-opacity sm:top-1/2"
+                  className="absolute top-1/2 h-6 -translate-y-1/2 transition-opacity"
                   style={{
                     left: `${x(row.low)}%`,
                     width: `${Math.max(0.8, x(row.high) - x(row.low))}%`,
@@ -102,13 +102,13 @@ export function FootballField({
                   }}
                 />
                 <span
-                  className="absolute top-[62%] -translate-x-full -translate-y-1/2 pr-2 text-xs tabular-nums text-muted sm:top-1/2"
+                  className="absolute top-1/2 z-10 -ml-1 -translate-x-full -translate-y-1/2 bg-card px-0.5 text-xs tabular-nums text-muted"
                   style={{ left: `${x(row.low)}%` }}
                 >
                   {usdShort(row.low)}
                 </span>
                 <span
-                  className="absolute top-[62%] -translate-y-1/2 pl-2 text-xs tabular-nums text-muted sm:top-1/2"
+                  className="absolute top-1/2 z-10 ml-1 -translate-y-1/2 bg-card px-0.5 text-xs tabular-nums text-muted"
                   style={{ left: `${x(row.high)}%` }}
                 >
                   {usdShort(row.high)}
@@ -116,14 +116,14 @@ export function FootballField({
                 {active ? (
                   <div
                     role="tooltip"
-                    className="absolute top-full z-10 -mt-2 rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-sm"
+                    className="absolute top-full z-10 -mt-2 border border-line bg-card px-3 py-2 text-xs"
                     style={{ left: `${Math.min(60, x(row.low))}%` }}
                   >
                     <div className="font-medium">{row.name}</div>
                     <div className="tabular-nums text-muted">
                       {usd(row.low)} – {usd(row.high)}
                     </div>
-                    <div className="tabular-nums text-faint">Midpoint {usd((row.low + row.high) / 2)}</div>
+                    <div className="tabular-nums text-muted">Midpoint {usd((row.low + row.high) / 2)}</div>
                   </div>
                 ) : null}
               </div>
@@ -141,7 +141,7 @@ export function FootballField({
             {ticks.map((t) => (
               <span
                 key={t}
-                className="absolute top-2 -translate-x-1/2 text-[11px] tabular-nums text-faint"
+                className="absolute top-2 -translate-x-1/2 text-[11px] tabular-nums text-muted"
                 style={{ left: `${x(t)}%` }}
               >
                 {usdShort(t)}
@@ -150,7 +150,8 @@ export function FootballField({
           </div>
         </div>
       </div>
-      {asking ? <div className="h-6" /> : null}
+      {asking ? <div className="h-10" /> : null}
+      </div>
     </div>
   );
 }
@@ -160,16 +161,15 @@ function PriceRow({ prices, x }: { prices: PricePoint[]; x: (v: number) => numbe
   const lo = sorted[0].value;
   const hi = sorted[sorted.length - 1].value;
   return (
-    <div className="relative h-20 border-b border-line/70">
-      <span className="absolute left-0 top-1 text-xs font-medium sm:hidden">Deal prices</span>
+    <div className="relative h-20 border-b border-line">
       <div
-        className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[#dfe5e1]"
+        className="absolute top-1/2 h-1 -translate-y-1/2 bg-line"
         style={{ left: `${x(lo)}%`, width: `${x(hi) - x(lo)}%` }}
       />
       {sorted.map((p, i) => (
         <div key={p.id} className="absolute top-1/2" style={{ left: `${x(p.value)}%` }}>
           <span
-            className="absolute block h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white"
+            className="absolute block h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 ring-2 ring-card"
             style={{ background: p.color }}
           />
           <span
@@ -201,8 +201,8 @@ function Marker({
     <div className="absolute inset-y-0" style={{ left: `${left}%` }}>
       <div className={`h-full ${solid ? 'w-0.5 bg-ink' : 'w-0 border-l-2 border-dashed border-risk'}`} />
       <span
-        className={`absolute ${below ? '-bottom-12' : '-top-6'} -translate-x-1/2 whitespace-nowrap rounded px-1.5 text-[11px] font-semibold ${
-          solid ? 'bg-ink text-white' : 'bg-risk-soft text-risk'
+        className={`absolute ${below ? '-bottom-12' : '-top-6'} -translate-x-1/2 whitespace-nowrap px-1.5 text-[11px] font-semibold ${
+          solid ? 'bg-ink text-card' : 'bg-brick-soft text-brick'
         }`}
       >
         {label}
@@ -234,7 +234,7 @@ export function StackedColumns({ labels, series }: { labels: string[]; series: S
           {ticks.map((t) => (
             <span
               key={t}
-              className="absolute right-0 translate-y-1/2 text-[11px] tabular-nums text-faint"
+              className="absolute right-0 translate-y-1/2 text-[11px] tabular-nums text-muted"
               style={{ bottom: `${(t / top) * H + 24}px` }}
             >
               {usdShort(t)}
@@ -279,7 +279,7 @@ export function StackedColumns({ labels, series }: { labels: string[]; series: S
                   {hover === i ? (
                     <div
                       role="tooltip"
-                      className="absolute bottom-full z-10 mb-2 w-48 rounded-lg border border-line bg-white p-2.5 text-xs shadow-sm"
+                      className="absolute bottom-full z-10 mb-2 w-48 border border-line bg-card p-2.5 text-xs"
                     >
                       <div className="mb-1 font-medium">{label}</div>
                       {series.map((s) => (
@@ -317,7 +317,7 @@ export function Columns({ labels, values, color }: { labels: string[]; values: n
         <div key={label} className="flex flex-col items-center gap-1" title={`${label}: ${usd(values[i])}`}>
           <span className="text-[11px] tabular-nums text-muted">{usdShort(values[i])}</span>
           <div
-            className="w-6 rounded-t sm:w-7"
+            className="w-6 sm:w-7"
             style={{ height: Math.max(1, (values[i] / top) * H), background: color }}
           />
           <span className="pb-1 text-xs text-muted">{label}</span>
@@ -361,15 +361,15 @@ export function MultipleBars({
               <span className="truncate text-sm font-medium leading-5" title={r.name}>
                 {r.name}
               </span>
-              <span className="truncate text-xs leading-4 text-faint">{r.sub}</span>
+              <span className="truncate text-xs leading-4 text-muted">{r.sub}</span>
             </div>
           ))}
         </div>
         <div className="relative mr-10">
           {rows.map((r) => (
-            <div key={r.id} className="relative h-11 border-b border-line/60">
+            <div key={r.id} className="relative h-11 border-b border-line">
               <div
-                className="absolute left-0 top-1/2 h-4 -translate-y-1/2 rounded-r"
+                className="absolute left-0 top-1/2 h-4 -translate-y-1/2"
                 style={{ width: `${x(r.multiple)}%`, background: r.highlight ? COLORS.syn : COLORS.target }}
                 title={`${r.name}: ${r.multiple.toFixed(1)}×`}
               />
@@ -390,7 +390,7 @@ export function MultipleBars({
             </div>
             <div className="absolute inset-y-0" style={{ left: `${x(offer)}%` }}>
               <div className="h-full w-0.5 bg-ink" />
-              <span className="absolute -top-6 -translate-x-1/2 whitespace-nowrap rounded bg-ink px-1.5 text-[11px] font-semibold text-white">
+              <span className="absolute -top-6 -translate-x-1/2 whitespace-nowrap bg-ink px-1.5 text-[11px] font-semibold text-card">
                 Your offer {offer.toFixed(1)}×
               </span>
             </div>
@@ -399,7 +399,7 @@ export function MultipleBars({
             {ticks.map((t) => (
               <span
                 key={t}
-                className="absolute top-2 -translate-x-1/2 text-[11px] tabular-nums text-faint"
+                className="absolute top-2 -translate-x-1/2 text-[11px] tabular-nums text-muted"
                 style={{ left: `${x(t)}%` }}
               >
                 {t}×
@@ -417,7 +417,7 @@ export function SplitBar({ parts }: { parts: Array<{ name: string; amount: numbe
   const total = parts.reduce((s, p) => s + p.amount, 0) || 1;
   return (
     <div>
-      <div className="flex h-10 w-full gap-[2px] overflow-hidden rounded-lg">
+      <div className="flex h-10 w-full gap-[2px] overflow-hidden">
         {parts
           .filter((p) => p.amount > 0)
           .map((p) => (
@@ -435,7 +435,7 @@ export function SplitBar({ parts }: { parts: Array<{ name: string; amount: numbe
             <Swatch color={p.color} />
             <span className="text-muted">{p.name}</span>
             <span className="font-semibold tabular-nums">{usd(p.amount)}</span>
-            <span className="text-xs text-faint">{Math.round((p.amount / total) * 100)}%</span>
+            <span className="text-xs text-muted">{Math.round((p.amount / total) * 100)}%</span>
           </span>
         ))}
       </div>

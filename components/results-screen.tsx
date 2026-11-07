@@ -1,13 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Columns, FootballField, StackedColumns } from '@/components/charts';
+import { Logo, livingGap } from '@/components/Logo';
+import { ReportStamp } from '@/components/report-stamp';
 import { COLORS, Panel, Prov, Stat, Swatch } from '@/components/ui';
 import { useWorkspace } from '@/components/workspace';
 import { ASSUMPTION_NOTES, ASSUMPTIONS } from '@/lib/assumptions';
 import { DEMO_STORIES } from '@/lib/demo';
-import { pct, times, usd, usdShort } from '@/lib/format';
+import { acct, pct, times, usd, usdShort } from '@/lib/format';
+import { theGap, VERDICT } from '@/lib/gap';
+import { SAMPLE_NAME, SAMPLE_STORIES } from '@/lib/sample';
 import { industryLabel } from '@/lib/industries';
 import { FinancingTab, PrecedentsTab, TabIntro } from '@/components/tabs-market';
 import type { Analysis } from '@/lib/model';
@@ -16,22 +20,36 @@ import type { Intake } from '@/lib/types';
 const TABS = ['Overview', 'Fit', 'Synergies', 'Financing', 'DCF', 'LBO', 'Precedents', 'Combined'] as const;
 type Tab = (typeof TABS)[number];
 
+const LOADING_LINES = [
+  'Comparing the asking price to industry comps',
+  'Running the DCF and LBO',
+  'Testing the loan at SBA rates',
+  'Checking the seller’s earnings claims',
+];
+
 export function ResultsScreen() {
   const { analysis, intake, ready, missing } = useWorkspace();
   const [tab, setTab] = useState<Tab>('Overview');
-  if (!ready) return <div className="min-h-[60vh]" />;
+  const [running, setRunning] = useState(true);
+  const [line, setLine] = useState(0);
+  useEffect(() => {
+    const tick = window.setInterval(() => setLine((n) => (n + 1) % LOADING_LINES.length), 600);
+    const done = window.setTimeout(() => setRunning(false), 2400);
+    return () => {
+      window.clearInterval(tick);
+      window.clearTimeout(done);
+    };
+  }, []);
+  if (!ready || (running && analysis)) return <Loading line={LOADING_LINES[line]} />;
   if (!analysis) {
     return (
       <div className="mx-auto flex max-w-lg flex-col items-start gap-4 px-6 py-24">
-        <h1 className="text-2xl font-semibold tracking-tight">Nothing to analyze yet</h1>
+        <h1 className="font-serif text-3xl text-green">Nothing to analyze yet</h1>
         <p className="text-sm leading-6 text-muted">
           {missing.length} fields are still empty. Fill in both companies and the deal terms, or load the demo
           deal.
         </p>
-        <Link
-          href="/"
-          className="inline-flex h-11 items-center rounded-full bg-pine px-5 text-sm font-semibold text-white"
-        >
+        <Link href="/deal" className="btn-solid">
           Go to the intake
         </Link>
       </div>
@@ -40,10 +58,10 @@ export function ResultsScreen() {
   const a = analysis;
   return (
     <div className="pb-16">
-      <Tombstone a={a} intake={intake} />
-      <div className="sticky top-0 z-20 border-b border-line bg-paper/95 backdrop-blur">
+      <ResultsHeader a={a} intake={intake} />
+      <div className="no-print sticky top-[100px] z-20 border-b border-line bg-page">
         <nav
-          className="mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto px-5 sm:px-8"
+          className="mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto px-4 sm:px-8"
           aria-label="Analysis sections"
         >
           {TABS.map((item) => (
@@ -52,19 +70,17 @@ export function ResultsScreen() {
               type="button"
               onClick={() => setTab(item)}
               aria-current={tab === item ? 'page' : undefined}
-              className={`relative shrink-0 px-3 py-3.5 text-sm ${
-                tab === item ? 'font-semibold text-ink' : 'text-muted hover:text-ink'
+              className={`relative shrink-0 px-3 py-3 text-sm ${
+                tab === item ? 'font-semibold text-green' : 'text-muted hover:text-ink'
               }`}
             >
               {item}
-              {tab === item ? (
-                <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-pine" />
-              ) : null}
+              {tab === item ? <span className="absolute inset-x-3 bottom-0 h-0.5 bg-green" /> : null}
             </button>
           ))}
         </nav>
       </div>
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 pt-8 sm:px-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pt-8 sm:px-8">
         {tab === 'Overview' ? <Overview a={a} go={setTab} /> : null}
         {tab === 'Fit' ? <FitTab a={a} intake={intake} /> : null}
         {tab === 'Synergies' ? <SynergyTab a={a} /> : null}
@@ -79,92 +95,129 @@ export function ResultsScreen() {
   );
 }
 
-/* ---------- Header ---------- */
-
-function Tombstone({ a, intake }: { a: Analysis; intake: Intake }) {
+function Loading({ line }: { line: string }) {
   return (
-    <header className="bg-pine text-white">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-10 sm:px-8 lg:flex-row lg:items-end lg:justify-between">
-        <div className="tombstone-in flex flex-col gap-4">
-          <div className="flex items-center gap-4 text-sm">
-            <Link href="/" className="text-white/70 underline underline-offset-4 hover:text-white">
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-6" role="status" aria-live="polite">
+      <Logo size={64} loading />
+      <p className="eyebrow">Running the report</p>
+      <p className="min-h-6 text-center text-sm text-muted">{line}…</p>
+    </div>
+  );
+}
+
+/* ---------- Header: verdict, The Gap, the fair-price stamp ---------- */
+
+const VERDICT_STYLE = {
+  PROCEED: 'border-green bg-green text-card',
+  NEGOTIATE: 'border-gold bg-transparent text-gold',
+  WALK: 'border-brick bg-brick text-card',
+};
+
+function ResultsHeader({ a, intake }: { a: Analysis; intake: Intake }) {
+  const verdict = VERDICT[a.verdict.tone];
+  const g = theGap(a);
+  const over = g.gap != null && g.gap > 0;
+  return (
+    <header className="border-b border-line bg-card">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8 sm:py-10">
+        <div className="fade-in">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+            <span className="eyebrow">Verdict</span>
+            <Link href="/deal" className="text-muted underline underline-offset-4 hover:text-green">
               Edit inputs
             </Link>
-            {intake.demo ? (
-              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/80">
-                Hypothetical demo companies
-              </span>
-            ) : null}
+            {intake.demo ? <span className="text-xs text-muted">Fictional companies</span> : null}
           </div>
-          <h1 className="max-w-3xl text-3xl leading-tight font-semibold tracking-[-0.02em] text-balance sm:text-4xl">
-            <span className="text-[#7fdcb4]">{a.buyer.name}</span>{' '}
-            <span className="font-normal text-white/60">acquiring</span>{' '}
-            <span className="text-[#f0c66b]">{a.target.name}</span>
-          </h1>
-          <p className="text-sm text-white/65">
-            {industryLabel(a.target.industry).split(' (')[0]}. {usdShort(a.target.revenue[2])} revenue and{' '}
-            {usdShort(a.verifiedEbitda)} EBITDA in 2025.
-          </p>
+          <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start">
+            <span
+              className={`inline-flex h-10 shrink-0 items-center self-start border-2 px-4 text-sm font-bold tracking-[0.16em] ${VERDICT_STYLE[verdict]}`}
+            >
+              {verdict}
+            </span>
+            <div>
+              <p className="text-lg font-semibold leading-snug text-ink text-balance">{a.verdict.headline}</p>
+              <p className="mt-1 text-sm text-muted">
+                {a.buyer.name} acquiring {a.target.name} · {industryLabel(a.target.industry).split(' (')[0]} ·{' '}
+                {usdShort(a.target.revenue[2])} revenue, {usdShort(a.verifiedEbitda)} verified EBITDA in 2025
+              </p>
+            </div>
+          </div>
+          <ul className="mt-4 grid gap-x-8 gap-y-1.5 text-sm leading-6 text-ink sm:grid-cols-2">
+            {a.verdict.points.map((point) => (
+              <li key={point} className="flex gap-2.5">
+                <span aria-hidden className="mt-2.5 h-1 w-1 shrink-0 bg-gold" />
+                {point}
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="tombstone-in grid min-w-[18rem] grid-cols-2 gap-x-8 gap-y-4 rounded-2xl border border-white/15 bg-white/5 p-5 [animation-delay:120ms]">
-          <div>
-            <div className="text-xs text-white/60">Your offer</div>
-            <div className="text-2xl font-semibold tabular-nums">{usd(a.offerEv)}</div>
-            <div className="text-xs text-white/60">{times(a.deal.offerMultiple)} EBITDA</div>
-          </div>
-          <div>
-            <div className="text-xs text-white/60">Equity return</div>
-            <div className="text-2xl font-semibold tabular-nums">
-              {a.lbo.irr != null ? pct(a.lbo.irr) : 'n/a'}
+
+        <div className="border-t-2 border-green pt-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex items-center gap-5">
+              <Logo
+                size={72}
+                gap={over && g.share != null ? livingGap(g.share) : 0}
+                edge={over}
+                title={over ? 'The gap is open: the asking price is above the fair price' : 'Closed: the asking price is at or below the fair price'}
+              />
+              <div>
+                <p className="eyebrow">The Gap</p>
+                {g.gap == null ? (
+                  <p className="mt-1 font-serif text-3xl text-green">No asking price yet</p>
+                ) : (
+                  <p className="mt-1 font-serif text-4xl leading-tight text-green tabular-nums sm:text-5xl">
+                    {over ? usd(g.gap) : usd(-g.gap)}{' '}
+                    <span className="text-xl text-ink sm:text-2xl">{over ? 'you’d overpay' : 'under fair value'}</span>
+                  </p>
+                )}
+                <p className="mt-2 text-sm text-muted tabular-nums">
+                  {g.asking != null ? `Asking ${usd(g.asking)} · ` : 'Add the asking price to measure the gap · '}
+                  Fair price {usd(g.fair)}
+                  {g.share != null
+                    ? ` · ${pct(Math.abs(g.share), 0)} ${g.share >= 0 ? 'above' : 'below'} value`
+                    : ''}
+                </p>
+              </div>
             </div>
-            <div className="text-xs text-white/60">
-              {a.lbo.moic != null ? `${times(a.lbo.moic, 2)} your money` : ''} over {a.deal.holdYears} yrs
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-white/60">Synergies counted</div>
-            <div className="text-lg font-semibold tabular-nums">{usdShort(a.synergies.runRate)}/yr</div>
-          </div>
-          <div>
-            <div className="text-xs text-white/60">Fit score</div>
-            <div className="text-lg font-semibold tabular-nums">
-              {a.fit.answered ? `${a.fit.score} / 100` : 'Not answered'}
-            </div>
+            <ReportStamp fair={g.fair} asking={g.asking} />
           </div>
         </div>
+
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-5 sm:grid-cols-4">
+          <HeadStat k="Your offer" v={usd(a.offerEv)} note={`${times(a.deal.offerMultiple)} EBITDA`} />
+          <HeadStat
+            k="Equity return"
+            v={a.lbo.irr != null ? pct(a.lbo.irr) : 'n/a'}
+            note={`${a.lbo.moic != null ? `${times(a.lbo.moic, 2)} your money ` : ''}over ${a.deal.holdYears} yrs`}
+          />
+          <HeadStat k="Synergies counted" v={`${usdShort(a.synergies.runRate)}/yr`} />
+          <HeadStat k="Fit score" v={a.fit.answered ? `${a.fit.score} / 100` : 'Not answered'} />
+        </dl>
       </div>
     </header>
+  );
+}
+
+function HeadStat({ k, v, note }: { k: string; v: string; note?: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted">{k}</dt>
+      <dd className="font-serif text-xl text-green tabular-nums">{v}</dd>
+      {note ? <dd className="text-xs text-muted">{note}</dd> : null}
+    </div>
   );
 }
 
 /* ---------- Overview ---------- */
 
 function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
-  const toneStyle = {
-    good: 'border-buyer/30 bg-buyer-soft',
-    caution: 'border-warn/30 bg-warn-soft',
-    risk: 'border-risk/30 bg-risk-soft',
-  }[a.verdict.tone];
-  const toneWord = { good: 'Looks sound', caution: 'Worth a closer look', risk: 'Red flags' }[a.verdict.tone];
   return (
     <>
       <TabIntro
         what="The one-page answer: what the target is worth, how your offer compares, whether the two companies fit, and how to pay for it."
         why="Start here. Each card points to a tab that shows the work behind the number."
       />
-      <section className={`rounded-2xl border p-6 ${toneStyle}`}>
-        <div className="text-sm font-semibold">{toneWord}</div>
-        <p className="mt-1 text-xl font-semibold tracking-tight text-balance">{a.verdict.headline}</p>
-        <ul className="mt-3 flex flex-col gap-1.5 text-sm leading-6 text-ink/80">
-          {a.verdict.points.map((point) => (
-            <li key={point} className="flex gap-2">
-              <span aria-hidden className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-ink/50" />
-              {point}
-            </li>
-          ))}
-        </ul>
-      </section>
-
       <Panel
         title="What the target is worth, and what to pay"
         aside={<span>Enterprise value, cash-free and debt-free</span>}
@@ -179,12 +232,12 @@ function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
               id: s.id,
               name: s.name.replace(' deal', ''),
               value: s.price,
-              color: s.id === 'good' ? '#14845e' : s.id === 'bad' ? '#b4432e' : '#8a978f',
+              color: s.id === 'good' ? '#1F4A37' : s.id === 'bad' ? '#9E3B2E' : '#5F665F',
             }))}
         />
-        <p className="mt-2 text-xs leading-5 text-faint">
-          Gold bars value the target on its own. The blue bar adds the synergies only you can create. The
-          good, average and bad prices average the gold bars’ low ends, middles and high ends.
+        <p className="mt-2 text-xs leading-5 text-muted">
+          Dark green bars value the target on its own. The pale bar adds the synergies only you can create. The
+          good, average and bad prices average the dark green bars’ low ends, middles and high ends.
         </p>
       </Panel>
 
@@ -198,7 +251,7 @@ function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
           <button
             type="button"
             onClick={() => go('Fit')}
-            className="mt-4 text-sm font-medium text-pine underline underline-offset-4"
+            className="mt-4 text-sm font-semibold text-green underline decoration-gold underline-offset-4"
           >
             See the fit scorecard
           </button>
@@ -218,7 +271,7 @@ function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
           <button
             type="button"
             onClick={() => go('Synergies')}
-            className="mt-4 text-sm font-medium text-pine underline underline-offset-4"
+            className="mt-4 text-sm font-semibold text-green underline decoration-gold underline-offset-4"
           >
             See every line
           </button>
@@ -248,7 +301,7 @@ function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
           <button
             type="button"
             onClick={() => go('Financing')}
-            className="mt-4 text-sm font-medium text-pine underline underline-offset-4"
+            className="mt-4 text-sm font-semibold text-green underline decoration-gold underline-offset-4"
           >
             See how the loan is sized
           </button>
@@ -281,9 +334,9 @@ function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
 
 function FitTab({ a, intake }: { a: Analysis; intake: Intake }) {
   const toneCls = {
-    strength: 'bg-buyer-soft text-[#0e6145]',
-    neutral: 'bg-[#eef1ee] text-muted',
-    risk: 'bg-risk-soft text-risk',
+    strength: 'bg-green-soft text-green',
+    neutral: 'bg-gold-soft text-[#7a5d22]',
+    risk: 'bg-brick-soft text-brick',
   };
   const toneWord = { strength: 'Strength', neutral: 'Watch', risk: 'Risk' };
   return (
@@ -297,13 +350,13 @@ function FitTab({ a, intake }: { a: Analysis; intake: Intake }) {
           role="buyer"
           name={a.buyer.name}
           c={intake.buyer}
-          story={intake.demo ? DEMO_STORIES.buyer : undefined}
+          story={intake.demo ? (a.target.name === SAMPLE_NAME ? SAMPLE_STORIES : DEMO_STORIES).buyer : undefined}
         />
         <ProfileCard
           role="target"
           name={a.target.name}
           c={intake.target}
-          story={intake.demo ? DEMO_STORIES.target : undefined}
+          story={intake.demo ? (a.target.name === SAMPLE_NAME ? SAMPLE_STORIES : DEMO_STORIES).target : undefined}
         />
       </div>
       <Panel
@@ -311,7 +364,7 @@ function FitTab({ a, intake }: { a: Analysis; intake: Intake }) {
         aside={
           a.fit.answered ? (
             <span>
-              <span className="text-lg font-semibold text-ink tabular-nums">{a.fit.score}</span> / 100 from{' '}
+              <span className="font-serif text-xl text-green tabular-nums">{a.fit.score}</span> / 100 from{' '}
               {a.fit.answered} factors
             </span>
           ) : (
@@ -324,7 +377,7 @@ function FitTab({ a, intake }: { a: Analysis; intake: Intake }) {
             <div key={factor.id} className="grid gap-2 py-3 sm:grid-cols-[13rem_7rem_1fr] sm:items-baseline">
               <span className="text-sm font-medium">{factor.name}</span>
               <span>
-                <span className={`rounded px-2 py-0.5 text-xs font-medium ${toneCls[factor.tone]}`}>
+                <span className={`px-2 py-0.5 text-xs font-semibold ${toneCls[factor.tone]}`}>
                   {toneWord[factor.tone]}
                 </span>
               </span>
@@ -371,11 +424,11 @@ function ProfileCard({
   story?: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-line bg-card">
-      <div className={`h-1.5 ${role === 'buyer' ? 'bg-buyer' : 'bg-target'}`} />
+    <section className="overflow-hidden border border-line bg-card">
+      <div className={`h-0.5 ${role === 'buyer' ? 'bg-green' : 'bg-gold'}`} />
       <div className="p-6">
-        <div className="text-xs text-muted">{role === 'buyer' ? 'Your company' : 'Target'}</div>
-        <h3 className="text-lg font-semibold">{name}</h3>
+        <div className="eyebrow">{role === 'buyer' ? 'Your company' : 'Target'}</div>
+        <h3 className="mt-1 font-serif text-xl text-green">{name}</h3>
         <p className="mt-2 text-sm leading-6 text-ink/80">{story ?? c.description}</p>
         <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <Def k="Industry" v={industryLabel(c.industry)} />
@@ -391,7 +444,7 @@ function ProfileCard({
 function Def({ k, v }: { k: string; v: string }) {
   return (
     <div>
-      <dt className="text-xs text-faint">{k}</dt>
+      <dt className="text-xs text-muted">{k}</dt>
       <dd>{v || '—'}</dd>
     </div>
   );
@@ -551,7 +604,7 @@ function DcfTab({ a }: { a: Analysis }) {
             <Row k="Present value of terminal value (exit multiple)" v={usd(d.exit.pvTv)} />
             <Row k="Growth rate the exit multiple implies" v={pct(d.exit.impliedGrowth)} />
           </dl>
-          <p className="mt-4 text-xs leading-5 text-faint">
+          <p className="mt-4 text-xs leading-5 text-muted">
             Growth, margins, D&A, capex and working capital all come from the target’s inputs. Tax is{' '}
             {pct(ASSUMPTIONS.taxRate, 0)}.
           </p>
@@ -572,14 +625,15 @@ function ProjectionTable({ a, rows }: { a: Analysis; rows: Analysis['dcf']['rows
     ['Plus D&A', (r) => r.da],
     ['Less capex', (r) => -r.capex],
     ['Less change in working capital', (r) => -r.deltaNwc],
-    ['Free cash flow', (r) => r.ufcf, 'font-semibold'],
+    ['Free cash flow', (r) => r.ufcf, 'total'],
   ];
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-sm tabular-nums">
+        <caption className="sr-only">US dollars. Negatives in parentheses.</caption>
         <thead>
-          <tr className="border-b border-line text-xs text-faint">
-            <th className="py-2 text-left font-normal" />
+          <tr className="border-b border-line text-xs text-muted">
+            <th className="py-2 text-left font-normal">$</th>
             <th className="py-2 text-right font-medium">2025 actual</th>
             {rows.map((r) => (
               <th key={r.year} className="py-2 text-right font-medium">
@@ -590,19 +644,22 @@ function ProjectionTable({ a, rows }: { a: Analysis; rows: Analysis['dcf']['rows
         </thead>
         <tbody>
           {lines.map(([name, get, cls]) => (
-            <tr key={name} className={`border-b border-line/60 ${cls ?? ''}`}>
+            <tr
+              key={name}
+              className={cls === 'total' ? 'border-t border-ink font-bold' : `border-b border-line ${cls ?? ''}`}
+            >
               <td className="py-2 pr-4 text-left">{name}</td>
               <td className="py-2 text-right text-muted">
-                {name === 'Revenue' ? usd(t.revenue[2]) : name === 'EBITDA' ? usd(t.ebitda[2]) : ''}
+                {name === 'Revenue' ? acct(t.revenue[2]) : name === 'EBITDA' ? acct(t.ebitda[2]) : ''}
               </td>
               {rows.map((r) => (
                 <td key={r.year} className="py-2 text-right">
-                  {usd(get(r))}
+                  {acct(get(r))}
                 </td>
               ))}
             </tr>
           ))}
-          <tr className="text-xs text-faint">
+          <tr className="text-xs text-muted">
             <td className="py-2">EBITDA margin</td>
             <td className="py-2 text-right">{pct(t.ebitda[2] / t.revenue[2])}</td>
             {rows.map((r) => (
@@ -682,8 +739,8 @@ function LboTab({ a }: { a: Analysis }) {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm tabular-nums">
             <thead>
-              <tr className="border-b border-line text-xs text-faint">
-                <th className="py-2 text-left font-normal" />
+              <tr className="border-b border-line text-xs text-muted">
+                <th className="py-2 text-left font-normal">$</th>
                 {l.years.map((y) => (
                   <th key={y.year} className="py-2 text-right font-medium">
                     {y.year}
@@ -704,16 +761,19 @@ function LboTab({ a }: { a: Analysis }) {
                   ['Debt at year end', (y) => y.closingDebt],
                 ] as Array<[string, (y: Analysis['lbo']['years'][number]) => number]>
               ).map(([name, get]) => (
-                <tr key={name} className="border-b border-line/60">
+                <tr
+                  key={name}
+                  className={name === 'Free cash flow to equity' ? 'border-t border-ink font-bold' : 'border-b border-line'}
+                >
                   <td className="py-2 pr-4">{name}</td>
                   {l.years.map((y) => (
                     <td key={y.year} className="py-2 text-right">
-                      {usd(get(y))}
+                      {acct(get(y))}
                     </td>
                   ))}
                 </tr>
               ))}
-              <tr className="text-xs text-faint">
+              <tr className="text-xs text-muted">
                 <td className="py-2">Debt coverage</td>
                 {l.years.map((y) => (
                   <td key={y.year} className={`py-2 text-right ${y.dscr < 1.25 ? 'text-risk' : ''}`}>
@@ -747,12 +807,12 @@ function SU({ title, items }: { title: string; items: Array<{ name: string; amou
   const total = items.reduce((s, i) => s + i.amount, 0);
   return (
     <div>
-      <div className="mb-2 text-sm font-semibold">{title}</div>
+      <div className="eyebrow mb-2">{title}</div>
       <dl className="flex flex-col gap-2 text-sm">
         {items.map((i) => (
           <Row key={i.name} k={i.name} v={usd(i.amount)} />
         ))}
-        <div className="border-t border-line pt-2">
+        <div className="border-t border-ink pt-2">
           <Row k="Total" v={usd(total)} bold />
         </div>
       </dl>
@@ -861,9 +921,9 @@ function Table({ head, rows, foot }: { head: string[]; rows: ReactNode[][]; foot
     <div className="overflow-x-auto">
       <table className="w-full min-w-[560px] text-sm">
         <thead>
-          <tr className="border-b border-line text-xs text-faint">
+          <tr className="border-b border-line text-xs text-muted">
             {head.map((h, i) => (
-              <th key={i} className={`py-2 font-medium ${i === 0 ? 'text-left' : 'text-left sm:text-right'}`}>
+              <th key={i} className={`py-2 font-medium ${i === 0 ? 'text-left' : 'text-right'}`}>
                 {h}
               </th>
             ))}
@@ -871,11 +931,11 @@ function Table({ head, rows, foot }: { head: string[]; rows: ReactNode[][]; foot
         </thead>
         <tbody>
           {rows.map((row, ri) => (
-            <tr key={ri} className="border-b border-line/60">
+            <tr key={ri} className="border-b border-line">
               {row.map((cell, ci) => (
                 <td
                   key={ci}
-                  className={`py-2.5 pr-3 tabular-nums ${ci === 0 ? 'text-left font-medium' : 'text-left sm:text-right'}`}
+                  className={`py-2.5 pr-3 tabular-nums ${ci === 0 ? 'text-left font-medium' : 'text-right'}`}
                 >
                   {cell}
                 </td>
@@ -885,11 +945,11 @@ function Table({ head, rows, foot }: { head: string[]; rows: ReactNode[][]; foot
         </tbody>
         {foot ? (
           <tfoot>
-            <tr className="font-semibold">
+            <tr className="border-t border-ink font-bold">
               {foot.map((cell, ci) => (
                 <td
                   key={ci}
-                  className={`py-2.5 pr-3 tabular-nums ${ci === 0 ? 'text-left' : 'text-left sm:text-right'}`}
+                  className={`py-2.5 pr-3 tabular-nums ${ci === 0 ? 'text-left' : 'text-right'}`}
                 >
                   {cell}
                 </td>
@@ -919,7 +979,7 @@ function Grid({
     <div className="overflow-x-auto">
       <table className="w-full text-sm tabular-nums">
         <thead>
-          <tr className="text-xs text-faint">
+          <tr className="text-xs text-muted">
             <th className="py-2 text-left font-normal">{corner}</th>
             {colHead.map((h) => (
               <th key={h} className="py-2 text-right font-medium">
@@ -930,12 +990,12 @@ function Grid({
         </thead>
         <tbody>
           {cells.map((row, ri) => (
-            <tr key={rowHead[ri]} className="border-t border-line/60">
-              <th className="py-2 text-left text-xs font-medium text-faint">{rowHead[ri]}</th>
+            <tr key={rowHead[ri]} className="border-t border-line">
+              <th className="py-2 text-left text-xs font-medium text-muted">{rowHead[ri]}</th>
               {row.map((cell, ci) => (
                 <td
                   key={ci}
-                  className={`py-2 text-right ${ri === center[0] && ci === center[1] ? 'rounded bg-pine font-semibold text-white' : ''}`}
+                  className={`py-2 text-right ${ri === center[0] && ci === center[1] ? 'bg-green font-semibold text-card' : ''}`}
                 >
                   <span className="px-1.5">{cell}</span>
                 </td>
@@ -959,23 +1019,23 @@ function Row({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
 
 function Assumptions() {
   return (
-    <details className="group rounded-2xl border border-line bg-card p-6">
-      <summary className="flex cursor-pointer list-none items-center justify-between text-base font-semibold">
-        Assumptions Dealspan made for you
-        <span className="text-sm font-normal text-muted group-open:hidden">
+    <details className="group border border-line bg-card p-6">
+      <summary className="flex cursor-pointer list-none items-center justify-between font-serif text-lg text-green">
+        Assumptions DealSpan made for you
+        <span className="font-sans text-sm font-normal text-muted group-open:hidden">
           Show {ASSUMPTION_NOTES.length}
         </span>
-        <span className="hidden text-sm font-normal text-muted group-open:inline">Hide</span>
+        <span className="hidden font-sans text-sm font-normal text-muted group-open:inline">Hide</span>
       </summary>
       <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
         {ASSUMPTION_NOTES.map((n) => (
           <div
             key={n.name}
-            className="flex items-start justify-between gap-4 border-b border-line/60 pb-3 text-sm"
+            className="flex items-start justify-between gap-4 border-b border-line pb-3 text-sm"
           >
             <div>
               <div className="font-medium">{n.name}</div>
-              <div className="text-xs leading-5 text-faint">{n.why}</div>
+              <div className="text-xs leading-5 text-muted">{n.why}</div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="tabular-nums">{n.value}</span>
@@ -984,7 +1044,7 @@ function Assumptions() {
           </div>
         ))}
       </div>
-      <p className="mt-4 flex items-center gap-2 text-xs text-faint">
+      <p className="mt-4 flex items-center gap-2 text-xs text-muted">
         <Swatch color={COLORS.line} /> Everything else on this page is either something you typed or
         calculated from it.
       </p>

@@ -18,3 +18,9 @@ export function pct(value: number, digits = 1): string {
 export function times(value: number, digits = 1): string {
   return `${value.toFixed(digits)}×`;
 }
+
+/** Accounting style for tables: negatives in parentheses, no dollar sign. */
+export function acct(value: number): string {
+  const body = Math.round(Math.abs(value)).toLocaleString('en-US');
+  return value < 0 ? `(${body})` : body;
+}

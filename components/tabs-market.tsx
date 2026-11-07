@@ -13,14 +13,14 @@ import type { Analysis, Scenario } from '@/lib/model';
 
 export function TabIntro({ what, why }: { what: ReactNode; why: ReactNode }) {
   return (
-    <section className="grid gap-4 rounded-2xl border border-line bg-card p-5 sm:grid-cols-2 sm:gap-8">
+    <section className="grid gap-4 border-l-2 border-green bg-card p-5 sm:grid-cols-2 sm:gap-8">
       <div>
-        <h2 className="text-sm font-semibold">What this shows</h2>
-        <p className="mt-1 text-sm leading-6 text-ink/80">{what}</p>
+        <h2 className="eyebrow">What this shows</h2>
+        <p className="mt-1 text-sm leading-6 text-ink">{what}</p>
       </div>
       <div className="border-line sm:border-l sm:pl-8">
-        <h2 className="text-sm font-semibold">Why it matters</h2>
-        <p className="mt-1 text-sm leading-6 text-ink/80">{why}</p>
+        <h2 className="eyebrow">Why it matters</h2>
+        <p className="mt-1 text-sm leading-6 text-ink">{why}</p>
       </div>
     </section>
   );
@@ -28,7 +28,7 @@ export function TabIntro({ what, why }: { what: ReactNode; why: ReactNode }) {
 
 function SourceLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a className="text-pine underline underline-offset-2" href={href} target="_blank" rel="noreferrer">
+    <a className="text-green underline decoration-gold underline-offset-2" href={href} target="_blank" rel="noreferrer">
       {children}
     </a>
   );
@@ -95,12 +95,12 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
         </Panel>
       )}
 
-      <details className="rounded-2xl border border-line bg-card p-6">
-        <summary className="cursor-pointer text-sm font-semibold">Deal details and sources</summary>
+      <details className="border border-line bg-card p-5 sm:p-6">
+        <summary className="cursor-pointer font-serif text-lg text-green">Deal details and sources</summary>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
-              <tr className="border-b border-line text-left text-xs text-faint">
+              <tr className="border-b border-line text-left text-xs text-muted">
                 <th className="py-2 font-medium">Business sold</th>
                 <th className="py-2 font-medium">Buyer</th>
                 <th className="py-2 font-medium">Year</th>
@@ -112,10 +112,10 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
             </thead>
             <tbody>
               {[...m.deals, ...m.withoutProfit].map((d) => (
-                <tr key={`${d.target}-${d.date}`} className="border-b border-line/60 align-top">
+                <tr key={`${d.target}-${d.date}`} className="border-b border-line align-top">
                   <td className="py-2 pr-3">
                     <div className="font-medium">{d.target}</div>
-                    {d.notes ? <div className="text-xs leading-5 text-faint">{d.notes}</div> : null}
+                    {d.notes ? <div className="text-xs leading-5 text-muted">{d.notes}</div> : null}
                   </td>
                   <td className="py-2 pr-3 text-muted">{d.acquirer}</td>
                   <td className="py-2 pr-3 tabular-nums text-muted">{d.date.slice(0, 4)}</td>
@@ -134,7 +134,7 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
             </tbody>
           </table>
         </div>
-        <p className="mt-4 text-xs leading-5 text-faint">
+        <p className="mt-4 text-xs leading-5 text-muted">
           {DEALS_SOURCE}. Earnouts are left out of price. Partial purchases are scaled to 100%. Foreign deals
           are converted to US$ at rounded 2023–2026 average rates (an assumption). Sales without a published
           profit can’t be turned into a multiple, so they are listed here but not charted.
@@ -157,9 +157,9 @@ export function FinancingTab({ a }: { a: Analysis }) {
 
       <ScenarioFinancing a={a} />
 
-      <section className="rounded-2xl border border-line bg-card p-6">
-        <div className="text-sm text-muted">Our recommendation at your offer</div>
-        <p className="mt-1 text-2xl font-semibold tracking-tight text-balance">
+      <section className="border border-line bg-card p-5 sm:p-6">
+        <div className="eyebrow">Our recommendation at your offer</div>
+        <p className="mt-1 font-serif text-2xl text-green text-balance">
           Borrow about {usd(f.recommendedLoan)} with an SBA 7(a) loan and put in {usd(f.buyerCash)} of your
           own cash.
         </p>
@@ -284,8 +284,8 @@ export function FinancingTab({ a }: { a: Analysis }) {
         </dl>
       </Panel>
 
-      <details className="rounded-2xl border border-line bg-card p-6">
-        <summary className="cursor-pointer text-sm font-semibold">
+      <details className="border border-line bg-card p-5 sm:p-6">
+        <summary className="cursor-pointer font-serif text-lg text-green">
           How the loan is sized, and all sources
         </summary>
         <div className="mt-3 flex flex-col gap-3 text-sm leading-6 text-muted">
@@ -315,10 +315,10 @@ export function FinancingTab({ a }: { a: Analysis }) {
 }
 
 const SCENARIO_COLOR: Record<Scenario['id'], string> = {
-  offer: '#17201c',
-  good: '#14845e',
-  average: '#8a978f',
-  bad: '#b4432e',
+  offer: '#1D2520',
+  good: '#1F4A37',
+  average: '#5F665F',
+  bad: '#9E3B2E',
 };
 
 function ScenarioFinancing({ a }: { a: Analysis }) {
@@ -346,13 +346,13 @@ function ScenarioFinancing({ a }: { a: Analysis }) {
             <div className="flex items-center gap-2">
               <span
                 aria-hidden
-                className="h-2.5 w-2.5 rounded-full"
+                className="h-2.5 w-2.5"
                 style={{ background: SCENARIO_COLOR[s.id] }}
               />
               <span className="text-sm font-semibold">{s.name}</span>
             </div>
-            <div style={{ width: `${(s.financing.projectCost / maxCost) * 100}%` }} className="min-w-[60%]">
-              <div className="flex h-7 w-full gap-[2px] overflow-hidden rounded-md">
+            <div style={{ width: `${Math.max(60, (s.financing.projectCost / maxCost) * 100)}%` }}>
+              <div className="flex h-7 w-full gap-[2px] overflow-hidden">
                 <div
                   style={{
                     width: `${(s.financing.recommendedLoan / s.financing.projectCost) * 100}%`,
@@ -373,11 +373,11 @@ function ScenarioFinancing({ a }: { a: Analysis }) {
         ))}
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted sm:pl-[10rem]">
           <span className="flex items-center gap-2">
-            <span aria-hidden className="h-2.5 w-2.5 rounded-sm" style={{ background: COLORS.syn }} /> Bank
+            <span aria-hidden className="h-2.5 w-2.5" style={{ background: COLORS.syn }} /> Bank
             loan
           </span>
           <span className="flex items-center gap-2">
-            <span aria-hidden className="h-2.5 w-2.5 rounded-sm" style={{ background: COLORS.buyer }} /> Your
+            <span aria-hidden className="h-2.5 w-2.5" style={{ background: COLORS.buyer }} /> Your
             cash
           </span>
           <span>Bar length = total cost</span>
@@ -386,7 +386,7 @@ function ScenarioFinancing({ a }: { a: Analysis }) {
       <div className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[620px] text-sm tabular-nums">
           <thead>
-            <tr className="border-b border-line text-xs text-faint">
+            <tr className="border-b border-line text-xs text-muted">
               <th className="py-2 text-left font-normal" />
               {a.scenarios.map((s) => (
                 <th
@@ -400,7 +400,7 @@ function ScenarioFinancing({ a }: { a: Analysis }) {
           </thead>
           <tbody>
             {rows.map(([name, get]) => (
-              <tr key={name} className="border-b border-line/60">
+              <tr key={name} className="border-b border-line">
                 <td className="py-2 pr-4">{name}</td>
                 {a.scenarios.map((s) => (
                   <td key={s.id} className={`py-2 text-right ${s.id === 'offer' ? 'font-semibold' : ''}`}>
