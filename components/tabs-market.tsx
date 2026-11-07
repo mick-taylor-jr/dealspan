@@ -6,7 +6,7 @@ import { COLORS, Panel, Prov, Stat } from '@/components/ui';
 import { DEALS_SOURCE } from '@/lib/deals';
 import { FINANCING_SOURCES, SBA } from '@/lib/financing';
 import { pct, times, usd, usdShort } from '@/lib/format';
-import { industryLabel } from '@/lib/industries';
+import type { AiState } from '@/components/workspace';
 import type { Analysis, Scenario } from '@/lib/model';
 
 /* ---------- Shared intro block ---------- */
@@ -36,30 +36,66 @@ function SourceLink({ href, children }: { href: string; children: ReactNode }) {
 
 /* ---------- Precedents ---------- */
 
-export function PrecedentsTab({ a }: { a: Analysis }) {
+export function AiStatus({ ai, compact }: { ai: AiState; compact?: boolean }) {
+  if (ai.status === 'idle') return null;
+  const text =
+    ai.status === 'loading'
+      ? 'AI is searching the web for more comparable sales. This takes about a minute; the numbers update when it finishes.'
+      : ai.status === 'ok'
+        ? ai.deals.length
+          ? `AI found ${ai.deals.length} more sale${ai.deals.length === 1 ? '' : 's'} with a published price and profit (${ai.searches} web searches). They are included and marked “Found by AI”.`
+          : `AI searched the web (${ai.searches} searches) but found no new sales with a published price and profit.`
+        : ai.status === 'not-configured'
+          ? 'AI search is off until an Anthropic API key is added in Vercel. Showing the deal database only.'
+          : (ai.message ?? 'The AI search did not finish. Showing the deal database only.');
+  const tone =
+    ai.status === 'loading'
+      ? 'bg-syn-soft text-[#2a5c94]'
+      : ai.status === 'ok'
+        ? 'bg-buyer-soft text-[#0e6145]'
+        : 'bg-[#eef1ee] text-muted';
+  return (
+    <p
+      className={`${compact ? 'mt-3 ' : ''}flex items-start gap-2 rounded-lg px-3 py-2 text-xs leading-5 ${tone}`}
+      aria-live="polite"
+    >
+      {ai.status === 'loading' ? (
+        <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 animate-pulse rounded-full bg-current" />
+      ) : null}
+      {text}
+    </p>
+  );
+}
+
+export function PrecedentsTab({ a, ai }: { a: Analysis; ai: AiState }) {
   const m = a.market;
-  const rows = [...m.deals]
-    .sort((x, y) => y.multiple - x.multiple)
-    .map((d) => ({
-      id: `${d.target}-${d.date}`,
-      name: d.target,
-      sub: `${d.date.slice(0, 4)}, ${usdShort(d.ebitda!)} profit`,
-      multiple: d.multiple,
-    }));
+  const ranked = a.ranked;
+  const rows = ranked.map((d, i) => ({
+    id: `${d.target}-${d.date}`,
+    name: d.target,
+    sub: `${Math.round(d.score)}/100 match, ${d.date.slice(0, 4)}, ${usdShort(d.ebitda)} profit${d.aiFound ? ', found by AI' : ''}`,
+    multiple: d.multiple,
+    rank: i + 1,
+    score: d.score,
+  }));
+  const top = ranked.slice(0, 3);
+  const topMid = top.length ? top.reduce((s, d) => s + d.multiple, 0) / top.length : NaN;
   return (
     <>
       <TabIntro
-        what="Every sale in this industry in our database, and what each buyer paid as a multiple of yearly profit (EBITDA)."
-        why="It shows the whole market, big deals and small, so you can see if your offer is low, normal or high for the industry."
+        what="Sales of businesses like this one, from our deal database plus a live AI web search, ranked by how close each is to the company you want to buy, with the price paid as a multiple of yearly profit (EBITDA)."
+        why="The closest matches tell you the most about what this business should sell for. Deals far down the list are a different size or kind of business, so weigh them less."
       />
-      {m.deals.length ? (
+      <AiStatus ai={ai} />
+      {ranked.length ? (
         <>
           <div className="grid gap-6 sm:grid-cols-3">
             <Panel>
               <Stat
-                label="Sales with a published profit"
-                value={m.deals.length}
-                note={industryLabel(a.target.industry).split(' (')[0]}
+                label={`Closest ${top.length} matches paid, on average`}
+                value={times(topMid)}
+                prov="calculated"
+                note={`= ${usdShort(topMid * a.verifiedEbitda)} for this company`}
               />
             </Panel>
             <Panel>
@@ -69,6 +105,7 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
                 }
                 value={`${times(m.q1)}–${times(m.q3)}`}
                 prov="calculated"
+                note={`${m.deals.length} sales with a published profit`}
               />
             </Panel>
             <Panel>
@@ -85,8 +122,50 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
               />
             </Panel>
           </div>
-          <Panel title="Price paid for each business, as a multiple of profit">
+          <Panel title="Sales ranked by how close they are to your target" aside="Closest match first">
             <MultipleBars rows={rows} offer={a.deal.offerMultiple} median={m.median} />
+          </Panel>
+          <Panel title="Why each sale ranks where it does">
+            <ol className="flex flex-col divide-y divide-line">
+              {ranked.map((d, i) => (
+                <li
+                  key={`${d.target}-${d.date}`}
+                  className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 py-3 sm:grid-cols-[2rem_1fr_10rem] sm:items-center"
+                >
+                  <span className="hidden text-sm font-semibold text-faint tabular-nums sm:block">
+                    #{i + 1}
+                  </span>
+                  <div className="col-span-2 min-w-0 sm:col-span-1">
+                    <div className="text-sm font-medium">
+                      <span className="mr-2 text-faint sm:hidden">#{i + 1}</span>
+                      {d.target}
+                      {d.aiFound ? (
+                        <span className="ml-2 rounded bg-syn-soft px-1.5 py-0.5 text-[11px] font-medium text-[#2a5c94]">
+                          Found by AI
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="text-xs leading-5 text-muted">
+                      {d.subsector ? `${d.subsector}. ` : ''}Bought by {d.acquirer}.
+                      {d.aiFound && d.notes ? ` ${d.notes}.` : ''} {d.reasons.join(', ')}
+                      {d.parts.size === 0 ? ', too far from your size to compare well' : ''}.{' '}
+                      <SourceLink href={d.source}>Source</SourceLink>
+                    </div>
+                  </div>
+                  <div className="col-span-2 flex items-center gap-2 sm:col-span-1">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#e8ece9]">
+                      <div
+                        className="h-full rounded-full bg-pine"
+                        style={{ width: `${Math.min(100, d.score)}%` }}
+                      />
+                    </div>
+                    <span className="w-14 text-right text-sm font-semibold tabular-nums">
+                      {Math.round(d.score)}/100
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ol>
           </Panel>
         </>
       ) : (
@@ -96,7 +175,16 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
       )}
 
       <details className="rounded-2xl border border-line bg-card p-6">
-        <summary className="cursor-pointer text-sm font-semibold">Deal details and sources</summary>
+        <summary className="cursor-pointer text-sm font-semibold">
+          How the match score works, and deal details
+        </summary>
+        <div className="mt-3 flex flex-col gap-3 text-sm leading-6 text-muted">
+          <p>
+            Out of 100: same type of work 25 (from “Type of work” on the intake), similar size 30 (full points
+            at the same profit, zero at 5× bigger or smaller), same kind of buyer 15, deal structure 10 (no
+            earnout like yours, 100% bought), how recent 10, priced on actual rather than forecast profit 10.
+          </p>
+        </div>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
@@ -111,7 +199,7 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
               </tr>
             </thead>
             <tbody>
-              {[...m.deals, ...m.withoutProfit].map((d) => (
+              {[...ranked, ...m.withoutProfit].map((d) => (
                 <tr key={`${d.target}-${d.date}`} className="border-b border-line/60 align-top">
                   <td className="py-2 pr-3">
                     <div className="font-medium">{d.target}</div>
@@ -135,9 +223,11 @@ export function PrecedentsTab({ a }: { a: Analysis }) {
           </table>
         </div>
         <p className="mt-4 text-xs leading-5 text-faint">
-          {DEALS_SOURCE}. Earnouts are left out of price. Partial purchases are scaled to 100%. Foreign deals
-          are converted to US$ at rounded 2023–2026 average rates (an assumption). Sales without a published
-          profit can’t be turned into a multiple, so they are listed here but not charted.
+          {DEALS_SOURCE}. Sales marked “Found by AI” come from a live web search by Claude; each is kept only
+          if its source link came back in the search results and it lists both a price and a profit. Check the
+          source before relying on one. Earnouts are left out of price. Partial purchases are scaled to 100%.
+          Foreign deals are converted to US$ at rounded 2023–2026 average rates (an assumption). Sales without
+          a published profit can’t be scored or charted, so they are listed last.
         </p>
       </details>
     </>

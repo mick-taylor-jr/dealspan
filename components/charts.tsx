@@ -333,7 +333,15 @@ export function MultipleBars({
   offer,
   median,
 }: {
-  rows: Array<{ id: string; name: string; sub: string; multiple: number; highlight?: boolean }>;
+  rows: Array<{
+    id: string;
+    name: string;
+    sub: string;
+    multiple: number;
+    highlight?: boolean;
+    rank?: number;
+    score?: number;
+  }>;
   offer: number;
   median: number;
 }) {
@@ -354,12 +362,15 @@ export function MultipleBars({
           of the market
         </span>
       </div>
-      <div className="grid grid-cols-[minmax(7rem,15rem)_1fr] gap-x-4">
+      <div className="grid grid-cols-[minmax(8rem,17rem)_1fr] gap-x-4">
         <div className="flex flex-col">
           {rows.map((r) => (
             <div key={r.id} className="flex h-11 flex-col justify-center">
-              <span className="truncate text-sm font-medium leading-5" title={r.name}>
-                {r.name}
+              <span className="flex items-center gap-2 truncate text-sm font-medium leading-5" title={r.name}>
+                {r.rank != null ? (
+                  <span className="w-6 shrink-0 text-faint tabular-nums">#{r.rank}</span>
+                ) : null}
+                <span className="truncate">{r.name}</span>
               </span>
               <span className="truncate text-xs leading-4 text-faint">{r.sub}</span>
             </div>

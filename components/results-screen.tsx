@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Columns, FootballField, StackedColumns } from '@/components/charts';
 import { COLORS, Panel, Prov, Stat, Swatch } from '@/components/ui';
-import { useWorkspace } from '@/components/workspace';
+import { useWorkspace, type AiState } from '@/components/workspace';
+import { AiStatus } from '@/components/tabs-market';
 import { ASSUMPTION_NOTES, ASSUMPTIONS } from '@/lib/assumptions';
 import { DEMO_STORIES } from '@/lib/demo';
 import { pct, times, usd, usdShort } from '@/lib/format';
@@ -17,8 +18,12 @@ const TABS = ['Overview', 'Fit', 'Synergies', 'Financing', 'DCF', 'LBO', 'Preced
 type Tab = (typeof TABS)[number];
 
 export function ResultsScreen() {
-  const { analysis, intake, ready, missing } = useWorkspace();
+  const { analysis, intake, ready, missing, findPrecedents, ai } = useWorkspace();
   const [tab, setTab] = useState<Tab>('Overview');
+  const hasAnalysis = analysis != null;
+  useEffect(() => {
+    if (hasAnalysis) findPrecedents();
+  }, [hasAnalysis, findPrecedents]);
   if (!ready) return <div className="min-h-[60vh]" />;
   if (!analysis) {
     return (
@@ -65,13 +70,13 @@ export function ResultsScreen() {
         </nav>
       </div>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 pt-8 sm:px-8">
-        {tab === 'Overview' ? <Overview a={a} go={setTab} /> : null}
+        {tab === 'Overview' ? <Overview a={a} go={setTab} ai={ai} /> : null}
         {tab === 'Fit' ? <FitTab a={a} intake={intake} /> : null}
         {tab === 'Synergies' ? <SynergyTab a={a} /> : null}
         {tab === 'Financing' ? <FinancingTab a={a} /> : null}
         {tab === 'DCF' ? <DcfTab a={a} /> : null}
         {tab === 'LBO' ? <LboTab a={a} /> : null}
-        {tab === 'Precedents' ? <PrecedentsTab a={a} /> : null}
+        {tab === 'Precedents' ? <PrecedentsTab a={a} ai={ai} /> : null}
         {tab === 'Combined' ? <CombinedTab a={a} /> : null}
         <Assumptions />
       </div>
@@ -139,7 +144,7 @@ function Tombstone({ a, intake }: { a: Analysis; intake: Intake }) {
 
 /* ---------- Overview ---------- */
 
-function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
+function Overview({ a, go, ai }: { a: Analysis; go: (tab: Tab) => void; ai: AiState }) {
   const toneStyle = {
     good: 'border-buyer/30 bg-buyer-soft',
     caution: 'border-warn/30 bg-warn-soft',
@@ -186,6 +191,7 @@ function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
           Gold bars value the target on its own. The blue bar adds the synergies only you can create. The
           good, average and bad prices average the gold bars’ low ends, middles and high ends.
         </p>
+        <AiStatus ai={ai} compact />
       </Panel>
 
       <div className="grid gap-6 lg:grid-cols-3">

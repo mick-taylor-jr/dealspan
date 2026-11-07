@@ -54,7 +54,7 @@ export function demoIntake(): Intake {
     },
     deal: {
       buyerType: 'strategic',
-      earnout: 'yes',
+      earnout: 'no',
       offerMultiple: '2.8',
       feesPct: '4',
       leverage: '1.75',

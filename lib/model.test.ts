@@ -37,6 +37,8 @@ test('demo intake is complete and runs every model', () => {
   const [offer, good, average, bad] = a.scenarios;
   assert.equal(offer.price, a.offerEv);
   assert.ok(good.price < average.price && average.price < bad.price);
+  assert.equal(a.ranked.length, 8);
+  assert.ok(a.ranked.every((d, i) => i === 0 || a.ranked[i - 1].score >= d.score));
   for (const s of a.scenarios)
     close(s.financing.recommendedLoan + s.financing.buyerCash, s.financing.projectCost, 1e-6);
   assert.ok(a.lbo.irr != null && a.lbo.irr > 0);
@@ -183,4 +185,74 @@ test('financing respects the 10% equity floor and coverage', () => {
   assert.equal(thin.coverageFloor, 1.25);
   assert.equal(thin.maxLoanReason, 'coverage');
   assert.equal(thin.plannedOk, false);
+});
+
+import { extractJsonArray, searchedUrlsFrom, validateDeals } from './ai-precedents';
+
+test('AI deals are kept only with a searched source, a price and a profit', () => {
+  const text = `Here you go <deals>[
+    {"target":"Acme Lawn LLC","acquirer":"BrightView","date":"2024-03","type_of_work":"Commercial landscaping","price_usd":4200000,"ebitda_usd":800000,"buyer_type":"strategic","earnout":false,"profit_basis":"actual","source_url":"https://www.example.com/acme-lawn/","note":""},
+    {"target":"Made Up Co","acquirer":"X","date":"2024-01","price_usd":1000000,"ebitda_usd":200000,"source_url":"https://invented.example.org/x"},
+    {"target":"No Profit Inc","acquirer":"Y","date":"2023-05","price_usd":3000000,"ebitda_usd":null,"source_url":"https://www.example.com/acme-lawn"},
+    {"target":"Crazy Multiple","acquirer":"Z","date":"2023-05","price_usd":90000000,"ebitda_usd":1000000,"source_url":"https://example.com/acme-lawn"},
+    {"target":"Bud's Plumbing (M.L.C. Plumbing)","acquirer":"Kingsway","date":"2025-03","price_usd":5000000,"ebitda_usd":800000,"source_url":"https://example.com/acme-lawn"}
+  ]</deals>`;
+  const content = [
+    { type: 'server_tool_use', id: 's1', name: 'web_search', input: { query: 'x' } },
+    {
+      type: 'web_search_tool_result',
+      tool_use_id: 's1',
+      content: [{ type: 'web_search_result', url: 'https://example.com/acme-lawn', title: 't' }],
+    },
+    { type: 'text', text },
+  ];
+  const raw = extractJsonArray(text);
+  assert.equal(raw.length, 5);
+  const { deals, rejected } = validateDeals(
+    raw,
+    searchedUrlsFrom(content),
+    ["Bud's Plumbing (M.L.C. Plumbing)"],
+    'Home & commercial services (HVAC, plumbing, electrical)',
+  );
+  assert.deepEqual(
+    deals.map((d) => d.target),
+    ['Acme Lawn LLC'],
+  );
+  assert.equal(deals[0].aiFound, true);
+  assert.equal(deals[0].basis, 'ltm');
+  assert.deepEqual(
+    rejected.map((r) => r.target),
+    ['Made Up Co', 'No Profit Inc', 'Crazy Multiple', "Bud's Plumbing (M.L.C. Plumbing)"],
+  );
+});
+
+test('AI deals join the ranking and the industry market', async () => {
+  const { analyze } = await import('./model');
+  const { demoIntake } = await import('./demo');
+  const extra = [
+    {
+      aiFound: true as const,
+      industry: 'Home & commercial services (HVAC, plumbing, electrical)',
+      subsector: 'Commercial landscaping and snow removal',
+      date: '2025-06',
+      target: 'Test Landscaping',
+      acquirer: 'Buyer',
+      buyerType: 'strategic' as const,
+      currency: 'USD',
+      ev: 1_500_000,
+      revenue: null,
+      ebitda: 350_000,
+      earnout: false,
+      stakePct: 100,
+      basis: 'ltm' as const,
+      implied: false,
+      profitPeriod: '',
+      notes: '',
+      source: 'https://example.com',
+    },
+  ];
+  const a = analyze(demoIntake(), extra)!;
+  assert.equal(a.ranked[0].target, 'Test Landscaping');
+  assert.equal(a.ranked.length, 9);
+  assert.equal(a.aiCount, 1);
 });

@@ -19,7 +19,10 @@ is entered once, on the intake page. The results workspace then builds, with no 
 Tax is 21%. Every other assumption is listed on screen and labeled `assumed`. The demo button loads two
 hypothetical companies (Northline Grounds Co. buying Greenridge Landscape Co.); neither is real.
 
-Deal data comes from the DealSpan comparable deals workbook (76 deals, Deals tab). Math is deterministic TypeScript in `lib/` (`model.ts`, `comps.ts`, `financing.ts`, `fit.ts`, `assumptions.ts`). Inputs are kept in the browser tab’s session storage only.
+Deal data comes from the DealSpan comparable deals workbook (76 deals, Deals tab), plus optional AI-found sales (below).
+All valuation math is deterministic TypeScript in `lib/` (`model.ts`, `comps.ts`, `financing.ts`, `fit.ts`,
+`assumptions.ts`); the AI only reads documents and finds deals, it never calculates. Inputs are kept in the browser tab’s
+session storage only.
 
 ## Start from a document (optional, uses Claude)
 
@@ -37,11 +40,12 @@ The document is sent to Anthropic for that one request and not stored. The featu
 `ANTHROPIC_API_KEY` is set. Copy `.env.example` to `.env.local` for local work (each teammate uses their own key).
 On Vercel, set the variables under Project → Settings → Environment Variables:
 
-| Variable                  | Needed | What it does                                                                                |
-| ------------------------- | ------ | ------------------------------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY`       | yes    | Turns the feature on. Server-only; never prefix with `NEXT_PUBLIC_`.                        |
-| `DEALSPAN_AI_MODEL`       | no     | Defaults to `claude-haiku-5-5`. `claude-sonnet-5-5` reads messy CIMs better and costs more. |
-| `DEALSPAN_AI_ACCESS_CODE` | no     | If set, users must enter it before importing, so strangers can’t spend the credits.         |
+| Variable                    | Needed | What it does                                                                                |
+| --------------------------- | ------ | ------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`         | yes    | Turns the feature on. Server-only; never prefix with `NEXT_PUBLIC_`.                        |
+| `DEALSPAN_AI_MODEL`         | no     | Defaults to `claude-haiku-5-5`. `claude-sonnet-5-5` reads messy CIMs better and costs more. |
+| `DEALSPAN_PRECEDENTS_MODEL` | no     | Model for the AI precedent search (below). Defaults to `claude-sonnet-5-5`.                 |
+| `DEALSPAN_AI_ACCESS_CODE`   | no     | If set, users must enter it before importing, so strangers can’t spend the credits.         |
 
 Set a monthly spend limit in the Anthropic Console as well; the built-in rate limit (12 imports per hour per IP) is
 best-effort.
@@ -54,3 +58,11 @@ pnpm lint
 pnpm typecheck
 pnpm build
 ```
+
+## AI precedent search (optional)
+
+The same `ANTHROPIC_API_KEY` lets the Precedents tab ask Claude, with web search, for more comparable sales. The key
+stays on the server (`app/api/precedents`). A sale is kept only if its source link came back in the search results and
+it lists both a price and an EBITDA; kept sales are scored with the same 1–100 rules and marked "Found by AI". Without
+the key the app uses the 76-deal workbook only. `DEALSPAN_PRECEDENTS_MODEL` overrides the model (default
+`claude-sonnet-5-5`). Searches run once per target and are limited to 6 per hour per IP (best-effort).
