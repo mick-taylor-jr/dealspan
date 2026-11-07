@@ -10,7 +10,9 @@ const LABEL_STYLE: Record<Label, string> = {
 
 export function Prov({ label }: { label: Label }) {
   return (
-    <span className={`inline-flex h-5 items-center rounded px-1.5 text-[11px] font-medium ${LABEL_STYLE[label]}`}>
+    <span
+      className={`inline-flex h-5 items-center rounded px-1.5 text-[11px] font-medium ${LABEL_STYLE[label]}`}
+    >
       {label}
     </span>
   );
@@ -32,7 +34,9 @@ export function Stat({
   return (
     <div className="flex flex-col gap-1">
       <span className="text-sm text-muted">{label}</span>
-      <span className={`tabular-nums tracking-tight ${emphasis ? 'text-3xl font-semibold' : 'text-xl font-semibold'}`}>
+      <span
+        className={`tabular-nums tracking-tight ${emphasis ? 'text-3xl font-semibold' : 'text-xl font-semibold'}`}
+      >
         {value}
       </span>
       {note || prov ? (
@@ -45,7 +49,15 @@ export function Stat({
   );
 }
 
-export function Panel({ title, aside, children }: { title?: string; aside?: ReactNode; children: ReactNode }) {
+export function Panel({
+  title,
+  aside,
+  children,
+}: {
+  title?: string;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <section className="rounded-2xl border border-line bg-card p-6">
       {title ? (
@@ -60,7 +72,19 @@ export function Panel({ title, aside, children }: { title?: string; aside?: Reac
 }
 
 export function Swatch({ color }: { color: string }) {
-  return <span aria-hidden className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: color }} />;
+  return (
+    <span
+      aria-hidden
+      className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+      style={{ background: color }}
+    />
+  );
 }
 
-export const COLORS = { buyer: '#14845e', target: '#b07a10', syn: '#3d7dc4', ink: '#17201c', line: '#dde3de' };
+export const COLORS = {
+  buyer: '#14845e',
+  target: '#b07a10',
+  syn: '#3d7dc4',
+  ink: '#17201c',
+  line: '#dde3de',
+};

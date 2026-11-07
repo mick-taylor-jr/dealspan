@@ -6,10 +6,11 @@ import { BareMoney, Choice, MoneyInput, NumberInput, SelectInput, TextInput } fr
 import { useWorkspace } from '@/components/workspace';
 import { DEMO_STORIES } from '@/lib/demo';
 import { usd } from '@/lib/format';
+import { subsectorsFor } from '@/lib/comps';
 import { INDUSTRIES } from '@/lib/industries';
 import { num, YEARS, type CompanyInput, type Intake, type SynergyInput } from '@/lib/types';
 
-const INDUSTRY_NAMES = INDUSTRIES.map((item) => item.name);
+const INDUSTRY_OPTIONS = INDUSTRIES.map((item) => ({ value: item.name, label: item.label }));
 
 export function IntakeScreen() {
   const { intake, setIntake, missing, loadDemo, clear, analysis } = useWorkspace();
@@ -40,6 +41,13 @@ export function IntakeScreen() {
             missing={targetMissing}
             onChange={(company) => update((prev) => ({ ...prev, target: { ...prev.target, ...company } }))}
           >
+            <TextInput
+              label="Type of work"
+              value={intake.target.subsector}
+              suggestions={subsectorsFor(intake.target.industry)}
+              onChange={(subsector) => update((p) => ({ ...p, target: { ...p.target, subsector } }))}
+              hint="Pick from the list to match sold businesses of the same kind, or type your own."
+            />
             <div className="grid gap-4 sm:grid-cols-3">
               <MoneyInput
                 label="EBITDA the seller claims"
@@ -69,7 +77,11 @@ export function IntakeScreen() {
         <FitSection intake={intake} update={update} />
 
         <div className="flex justify-start">
-          <button type="button" onClick={clear} className="text-sm text-muted underline underline-offset-4 hover:text-ink">
+          <button
+            type="button"
+            onClick={clear}
+            className="text-sm text-muted underline underline-offset-4 hover:text-ink"
+          >
             Clear every field
           </button>
         </div>
@@ -90,8 +102,8 @@ function Hero({ onDemo, demo }: { onDemo: () => void; demo: boolean }) {
             Two companies in. A price you can defend out.
           </h1>
           <p className="max-w-lg text-base leading-7 text-white/75">
-            Enter your company and the one you want to buy. Dealspan builds the DCF, LBO, comps and precedents on the
-            target, then shows what the two are worth together and whether the fit is real.
+            Enter your company and the one you want to buy. Dealspan builds the DCF, LBO, comps and precedents
+            on the target, then shows what the two are worth together and whether the fit is real.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -118,7 +130,9 @@ function DealDiagram({ demo }: { demo: boolean }) {
           <div className="mb-2 h-1 w-8 rounded-full bg-[#4fc79a]" />
           <div className="text-sm font-semibold">{demo ? 'Northline Grounds Co.' : 'Your company'}</div>
           <p className="mt-1 text-xs leading-5 text-white/60">
-            {demo ? DEMO_STORIES.buyer.split('. ').slice(0, 1).join('. ') + '.' : 'Revenue, EBITDA, debt, cash, how you operate.'}
+            {demo
+              ? DEMO_STORIES.buyer.split('. ').slice(0, 1).join('. ') + '.'
+              : 'Revenue, EBITDA, debt, cash, how you operate.'}
           </p>
         </div>
         <div className="flex items-center text-2xl font-light text-white/40" aria-hidden>
@@ -128,15 +142,22 @@ function DealDiagram({ demo }: { demo: boolean }) {
           <div className="mb-2 h-1 w-8 rounded-full bg-[#e2b04a]" />
           <div className="text-sm font-semibold">{demo ? 'Greenridge Landscape Co.' : 'The target'}</div>
           <p className="mt-1 text-xs leading-5 text-white/60">
-            {demo ? DEMO_STORIES.target.split('. ').slice(0, 1).join('. ') + '.' : 'Three years of history and everything the models need.'}
+            {demo
+              ? DEMO_STORIES.target.split('. ').slice(0, 1).join('. ') + '.'
+              : 'Three years of history and everything the models need.'}
           </p>
         </div>
       </div>
       <div className="rounded-xl border border-white/15 bg-white/[0.07] p-4 text-sm leading-6 text-white/80">
-        <span className="font-semibold text-white">You get:</span> a valuation range from four methods, an LBO with
-        debt paydown, synergies after haircuts, the combined company, and a fit scorecard with questions for the seller.
+        <span className="font-semibold text-white">You get:</span> a valuation range from four methods, an LBO
+        with debt paydown, synergies after haircuts, the combined company, and a fit scorecard with questions
+        for the seller.
       </div>
-      {demo ? <p className="text-xs leading-5 text-white/55">{DEMO_STORIES.target.split('. ').slice(-2).join('. ')}</p> : null}
+      {demo ? (
+        <p className="text-xs leading-5 text-white/55">
+          {DEMO_STORIES.target.split('. ').slice(-2).join('. ')}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -155,9 +176,13 @@ function SectionHead({ title, note, missing }: { title: string; note: string; mi
 
 function Progress({ missing }: { missing: number }) {
   return missing === 0 ? (
-    <span className="shrink-0 whitespace-nowrap rounded-full bg-buyer-soft px-2.5 py-1 text-xs font-medium text-[#0e6145]">Complete</span>
+    <span className="shrink-0 whitespace-nowrap rounded-full bg-buyer-soft px-2.5 py-1 text-xs font-medium text-[#0e6145]">
+      Complete
+    </span>
   ) : (
-    <span className="shrink-0 whitespace-nowrap rounded-full bg-[#eef1ee] px-2.5 py-1 text-xs font-medium text-muted">{missing} to fill</span>
+    <span className="shrink-0 whitespace-nowrap rounded-full bg-[#eef1ee] px-2.5 py-1 text-xs font-medium text-muted">
+      {missing} to fill
+    </span>
   );
 }
 
@@ -178,7 +203,8 @@ function CompanyCard({
   onChange: (company: CompanyInput) => void;
   children?: ReactNode;
 }) {
-  const set = <K extends keyof CompanyInput>(key: K, value: CompanyInput[K]) => onChange({ ...company, [key]: value });
+  const set = <K extends keyof CompanyInput>(key: K, value: CompanyInput[K]) =>
+    onChange({ ...company, [key]: value });
   const accent = role === 'buyer' ? 'bg-buyer' : 'bg-target';
   const rev = num(company.revenue[2]);
   const ebitda = num(company.ebitda[2]);
@@ -198,7 +224,12 @@ function CompanyCard({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <TextInput label="Name" value={company.name} onChange={(v) => set('name', v)} />
-          <SelectInput label="Industry" value={company.industry} options={INDUSTRY_NAMES} onChange={(v) => set('industry', v)} />
+          <SelectInput
+            label="Industry"
+            value={company.industry}
+            options={INDUSTRY_OPTIONS}
+            onChange={(v) => set('industry', v)}
+          />
           <TextInput
             className="sm:col-span-2"
             label="What the company does"
@@ -206,7 +237,11 @@ function CompanyCard({
             value={company.description}
             onChange={(v) => set('description', v)}
           />
-          <TextInput label="Where it operates" value={company.location} onChange={(v) => set('location', v)} />
+          <TextInput
+            label="Where it operates"
+            value={company.location}
+            onChange={(v) => set('location', v)}
+          />
           <TextInput label="Main customers" value={company.customers} onChange={(v) => set('customers', v)} />
         </div>
 
@@ -260,7 +295,12 @@ function CompanyCard({
           <h3 className="mb-3 text-sm font-semibold">2025 balance sheet and cash needs</h3>
           <div className="grid gap-4 sm:grid-cols-3">
             <MoneyInput label="D&A" value={company.da} onChange={(v) => set('da', v)} />
-            <MoneyInput label="Capex" value={company.capex} onChange={(v) => set('capex', v)} hint="Equipment, trucks, etc." />
+            <MoneyInput
+              label="Capex"
+              value={company.capex}
+              onChange={(v) => set('capex', v)}
+              hint="Equipment, trucks, etc."
+            />
             <MoneyInput
               label="Net working capital"
               value={company.nwc}
@@ -269,7 +309,12 @@ function CompanyCard({
             />
             <MoneyInput label="Debt" value={company.debt} onChange={(v) => set('debt', v)} />
             <MoneyInput label="Cash" value={company.cash} onChange={(v) => set('cash', v)} />
-            <NumberInput label="Rate on that debt" suffix="%" value={company.debtRate} onChange={(v) => set('debtRate', v)} />
+            <NumberInput
+              label="Rate on that debt"
+              suffix="%"
+              value={company.debtRate}
+              onChange={(v) => set('debtRate', v)}
+            />
             <NumberInput
               label="Revenue growth per year"
               suffix="%"
@@ -277,7 +322,13 @@ function CompanyCard({
               onChange={(v) => set('growth', v)}
               hint="Your best estimate for 2026–2030."
             />
-            <NumberInput label="Employees" suffix="people" places={0} value={company.employees} onChange={(v) => set('employees', v)} />
+            <NumberInput
+              label="Employees"
+              suffix="people"
+              places={0}
+              value={company.employees}
+              onChange={(v) => set('employees', v)}
+            />
           </div>
         </div>
         {children}
@@ -296,7 +347,8 @@ function DealSection({
   update: (fn: (draft: Intake) => Intake) => void;
 }) {
   const d = intake.deal;
-  const set = (key: keyof Intake['deal'], value: string) => update((p) => ({ ...p, deal: { ...p.deal, [key]: value } }));
+  const set = (key: keyof Intake['deal'], value: string) =>
+    update((p) => ({ ...p, deal: { ...p.deal, [key]: value } }));
   const ebitda = num(intake.target.ebitda[2]);
   const mult = num(d.offerMultiple);
   const lev = num(d.leverage);
@@ -307,24 +359,68 @@ function DealSection({
         note="How you would pay. The LBO, DCF discount rate and returns all come from here, so the model tabs never ask for more."
         missing={missing}
       />
+      <div className="mb-6 grid gap-6 md:grid-cols-2">
+        <Choice
+          label="What kind of buyer are you"
+          value={d.buyerType}
+          onChange={(v) => update((p) => ({ ...p, deal: { ...p.deal, buyerType: v || 'strategic' } }))}
+          options={[
+            { value: 'strategic', label: 'A company adding a business' },
+            { value: 'financial', label: 'Investor or search fund' },
+            { value: 'individual', label: 'First-time buyer' },
+          ]}
+        />
+        <Choice
+          label="Will part of the price depend on future results (an earnout)?"
+          value={d.earnout}
+          onChange={(v) => update((p) => ({ ...p, deal: { ...p.deal, earnout: v } }))}
+          options={[
+            { value: 'yes', label: 'Yes' },
+            { value: 'no', label: 'No' },
+          ]}
+        />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <NumberInput
           label="Offer, as a multiple of EBITDA"
           suffix="×"
           value={d.offerMultiple}
           onChange={(v) => set('offerMultiple', v)}
-          hint={ebitda && mult ? `= ${usd(ebitda * mult)} purchase price` : 'Applied to the target’s 2025 EBITDA.'}
+          hint={
+            ebitda && mult ? `= ${usd(ebitda * mult)} purchase price` : 'Applied to the target’s 2025 EBITDA.'
+          }
         />
         <NumberInput
           label="Acquisition debt"
           suffix="× EBITDA"
           value={d.leverage}
           onChange={(v) => set('leverage', v)}
-          hint={ebitda && lev != null ? `= ${usd(ebitda * lev)} borrowed` : 'SBA and bank loans are often 1.5–3×.'}
+          hint={
+            ebitda && lev != null
+              ? `= ${usd(ebitda * lev)} borrowed. The Financing tab checks this.`
+              : 'The Financing tab tells you how much lenders allow.'
+          }
         />
-        <NumberInput label="Interest rate on new debt" suffix="%" value={d.rate} onChange={(v) => set('rate', v)} />
-        <NumberInput label="Loan term" suffix="years" places={0} value={d.termYears} onChange={(v) => set('termYears', v)} />
-        <NumberInput label="Deal fees" suffix="% of price" value={d.feesPct} onChange={(v) => set('feesPct', v)} hint="Legal, QoE, lender fees." />
+        <NumberInput
+          label="Interest rate on new debt"
+          suffix="%"
+          value={d.rate}
+          onChange={(v) => set('rate', v)}
+        />
+        <NumberInput
+          label="Loan term"
+          suffix="years"
+          places={0}
+          value={d.termYears}
+          onChange={(v) => set('termYears', v)}
+        />
+        <NumberInput
+          label="Deal fees"
+          suffix="% of price"
+          value={d.feesPct}
+          onChange={(v) => set('feesPct', v)}
+          hint="Legal, QoE, lender fees."
+        />
         <NumberInput
           label="Exit multiple"
           suffix="×"
@@ -332,18 +428,35 @@ function DealSection({
           onChange={(v) => set('exitMultiple', v)}
           hint="What a buyer pays you when you sell."
         />
-        <NumberInput label="Hold period" suffix="years" places={0} value={d.holdYears} onChange={(v) => set('holdYears', v)} />
-        <NumberInput label="Return you need" suffix="% a year" value={d.targetIrr} onChange={(v) => set('targetIrr', v)} />
+        <NumberInput
+          label="Hold period"
+          suffix="years"
+          places={0}
+          value={d.holdYears}
+          onChange={(v) => set('holdYears', v)}
+        />
+        <NumberInput
+          label="Return you need"
+          suffix="% a year"
+          value={d.targetIrr}
+          onChange={(v) => set('targetIrr', v)}
+        />
       </div>
       <p className="mt-5 text-xs leading-5 text-faint">
-        Assumed for every model: 21% tax rate. The target is bought cash-free and debt-free, so the seller pays off its own
-        debt and keeps its cash.
+        Assumed for every model: 21% tax rate. The target is bought cash-free and debt-free, so the seller
+        pays off its own debt and keeps its cash.
       </p>
     </section>
   );
 }
 
-function SynergySection({ intake, update }: { intake: Intake; update: (fn: (draft: Intake) => Intake) => void }) {
+function SynergySection({
+  intake,
+  update,
+}: {
+  intake: Intake;
+  update: (fn: (draft: Intake) => Intake) => void;
+}) {
   const setLine = (id: string, patch: Partial<SynergyInput>) =>
     update((p) => ({ ...p, synergies: p.synergies.map((s) => (s.id === id ? { ...s, ...patch } : s)) }));
   return (
@@ -354,8 +467,15 @@ function SynergySection({ intake, update }: { intake: Intake; update: (fn: (draf
       />
       <div className="flex flex-col gap-3">
         {intake.synergies.map((line) => (
-          <div key={line.id} className="grid items-end gap-3 rounded-xl bg-paper p-3 sm:grid-cols-[auto_1fr_12rem_auto]">
-            <div className="flex rounded-lg border border-line bg-white p-0.5" role="group" aria-label="Synergy type">
+          <div
+            key={line.id}
+            className="grid items-end gap-3 rounded-xl bg-paper p-3 sm:grid-cols-[auto_1fr_12rem_auto]"
+          >
+            <div
+              className="flex rounded-lg border border-line bg-white p-0.5"
+              role="group"
+              aria-label="Synergy type"
+            >
               {(['cost', 'revenue'] as const).map((kind) => (
                 <button
                   key={kind}
@@ -371,7 +491,11 @@ function SynergySection({ intake, update }: { intake: Intake; update: (fn: (draf
             <TextInput
               label="Description"
               value={line.description}
-              placeholder={line.kind === 'cost' ? 'Close one of the two offices' : 'Sell your services to their customers'}
+              placeholder={
+                line.kind === 'cost'
+                  ? 'Close one of the two offices'
+                  : 'Sell your services to their customers'
+              }
               onChange={(description) => setLine(line.id, { description })}
             />
             <MoneyInput
@@ -382,7 +506,9 @@ function SynergySection({ intake, update }: { intake: Intake; update: (fn: (draf
             <button
               type="button"
               aria-label={`Remove ${line.description || 'synergy'}`}
-              onClick={() => update((p) => ({ ...p, synergies: p.synergies.filter((s) => s.id !== line.id) }))}
+              onClick={() =>
+                update((p) => ({ ...p, synergies: p.synergies.filter((s) => s.id !== line.id) }))
+              }
               className="h-10 rounded-lg px-3 text-sm text-muted hover:bg-white hover:text-risk"
             >
               Remove
@@ -396,7 +522,10 @@ function SynergySection({ intake, update }: { intake: Intake; update: (fn: (draf
           onClick={() =>
             update((p) => ({
               ...p,
-              synergies: [...p.synergies, { id: `s${Date.now()}`, kind: 'cost', description: '', amount: '' }],
+              synergies: [
+                ...p.synergies,
+                { id: `s${Date.now()}`, kind: 'cost', description: '', amount: '' },
+              ],
             }))
           }
           className="h-10 rounded-full border border-line px-4 text-sm font-medium hover:border-ink/30"
@@ -452,9 +581,24 @@ function FitSection({ intake, update }: { intake: Intake; update: (fn: (draft: I
             { value: 'new', label: 'New region' },
           ]}
         />
-        <Choice label="Customers you already share" value={f.customerOverlap} onChange={(v) => set('customerOverlap', v)} options={lmh} />
-        <Choice label="Room to cross-sell" value={f.crossSell} onChange={(v) => set('crossSell', v)} options={lmh} />
-        <Choice label="How much it depends on the owner" value={f.ownerDependence} onChange={(v) => set('ownerDependence', v)} options={lmh} />
+        <Choice
+          label="Customers you already share"
+          value={f.customerOverlap}
+          onChange={(v) => set('customerOverlap', v)}
+          options={lmh}
+        />
+        <Choice
+          label="Room to cross-sell"
+          value={f.crossSell}
+          onChange={(v) => set('crossSell', v)}
+          options={lmh}
+        />
+        <Choice
+          label="How much it depends on the owner"
+          value={f.ownerDependence}
+          onChange={(v) => set('ownerDependence', v)}
+          options={lmh}
+        />
         <Choice
           label="Key employees after close"
           value={f.keyPeople}
@@ -539,7 +683,10 @@ function RunBar({
           )}
         </p>
         {ready ? (
-          <Link href="/results" className="inline-flex h-11 items-center rounded-full bg-pine px-6 text-sm font-semibold text-white hover:bg-pine-2">
+          <Link
+            href="/results"
+            className="inline-flex h-11 items-center rounded-full bg-pine px-6 text-sm font-semibold text-white hover:bg-pine-2"
+          >
             Run the analysis
           </Link>
         ) : (

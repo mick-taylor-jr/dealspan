@@ -1,6 +1,7 @@
 import { ASSUMPTIONS, costOfEquity, sizeDiscount, wacc } from '@/lib/assumptions';
-import { industryInfo, PRECEDENT_NEIGHBORS } from '@/lib/industries';
-import { CITED_DEALS, type CitedDeal } from '@/lib/precedents';
+import { industryMarket, selectComparables, type CompSelection, type IndustryMarket } from '@/lib/comps';
+import { runFinancing, type Financing } from '@/lib/financing';
+import { industryInfo } from '@/lib/industries';
 import { num, type CompanyInput, type Intake } from '@/lib/types';
 import { scoreFit, type FitResult } from '@/lib/fit';
 
@@ -61,7 +62,8 @@ function parseCompany(input: CompanyInput, section: 'buyer' | 'target', missing:
     if (value == null) missing.push({ section, field: label });
     else rest[key] = value;
   }
-  if ((ebitda[2] ?? 0) <= 0 && ebitda[2] != null) missing.push({ section, field: 'EBITDA 2025 must be positive' });
+  if ((ebitda[2] ?? 0) <= 0 && ebitda[2] != null)
+    missing.push({ section, field: 'EBITDA 2025 must be positive' });
   if (missing.length > start) return null;
   return {
     name: input.name.trim(),
@@ -97,10 +99,12 @@ function parseDeal(intake: Intake, missing: Missing[]): Deal | null {
     if (value == null) missing.push({ section: 'deal', field: label });
     else out[key] = value;
   }
-  if (out.offerMultiple != null && out.offerMultiple <= 0) missing.push({ section: 'deal', field: 'Offer multiple above 0' });
+  if (out.offerMultiple != null && out.offerMultiple <= 0)
+    missing.push({ section: 'deal', field: 'Offer multiple above 0' });
   if (out.holdYears != null && (out.holdYears < 1 || out.holdYears > 10))
     missing.push({ section: 'deal', field: 'Hold period of 1–10 years' });
-  if (out.termYears != null && out.termYears <= 0) missing.push({ section: 'deal', field: 'Loan term above 0' });
+  if (out.termYears != null && out.termYears <= 0)
+    missing.push({ section: 'deal', field: 'Loan term above 0' });
   if (missing.length > start) return null;
   return {
     offerMultiple: out.offerMultiple,
@@ -276,7 +280,13 @@ export type LboResult = {
 
 type LboCore = Omit<LboResult, 'maxMultipleAtTarget' | 'grid' | 'sources' | 'uses'>;
 
-function lboCore(baseEbitda: number, rows: ProjectionYear[], deal: Deal, entryMultiple: number, exitMultiple: number): LboCore {
+function lboCore(
+  baseEbitda: number,
+  rows: ProjectionYear[],
+  deal: Deal,
+  entryMultiple: number,
+  exitMultiple: number,
+): LboCore {
   const ev = entryMultiple * baseEbitda;
   const fees = ev * deal.feesPct;
   const debt = Math.max(0, Math.min(deal.leverage * baseEbitda, ev * ASSUMPTIONS.maxDebtShareOfPrice));
@@ -334,7 +344,12 @@ function lboCore(baseEbitda: number, rows: ProjectionYear[], deal: Deal, entryMu
   };
 }
 
-function maxMultipleForIrr(baseEbitda: number, rows: ProjectionYear[], deal: Deal, irrTarget: number): number | null {
+function maxMultipleForIrr(
+  baseEbitda: number,
+  rows: ProjectionYear[],
+  deal: Deal,
+  irrTarget: number,
+): number | null {
   const irrAt = (m: number) => lboCore(baseEbitda, rows, deal, m, deal.exitMultiple).irr ?? -1;
   let low = 0.25;
   let high = 30;
@@ -371,7 +386,8 @@ export function runLbo(baseEbitda: number, rows: ProjectionYear[], deal: Deal): 
 
 /* ---------- Comps ---------- */
 
-export type CompsResult = {
+/** Public-company reference: Damodaran multiple with a size discount. Used only as a fallback when fewer than 3 similar sales exist. */
+export type PublicRef = {
   sector: string;
   publicMultiple: number;
   discount: { low: number; high: number; band: string };
@@ -381,7 +397,7 @@ export type CompsResult = {
   evHigh: number;
 };
 
-export function runComps(target: Company, ebitda: number): CompsResult | null {
+export function publicReference(target: Company, ebitda: number): PublicRef | null {
   const info = industryInfo(target.industry);
   if (!info) return null;
   const discount = sizeDiscount(ebitda);
@@ -525,8 +541,10 @@ export type Analysis = {
   buyerRows: ProjectionYear[];
   dcf: DcfResult;
   lbo: LboResult;
-  comps: CompsResult | null;
-  precedents: { matched: CitedDeal[]; others: CitedDeal[] };
+  comps: CompSelection;
+  publicRef: PublicRef | null;
+  market: IndustryMarket;
+  financing: Financing;
   synergies: SynergyResult;
   proForma: ProForma;
   fit: FitResult;
@@ -560,24 +578,54 @@ export function analyze(intake: Intake): Analysis | null {
 
   const dcf = runDcf(target, targetRows.slice(0, ASSUMPTIONS.projectionYears), deal);
   const lbo = runLbo(verifiedEbitda, targetRows, deal);
-  const comps = runComps(target, verifiedEbitda);
-  const neighbors = PRECEDENT_NEIGHBORS[target.industry] ?? [];
-  const precedents = {
-    matched: CITED_DEALS.filter((d) => neighbors.includes(d.industry)),
-    others: CITED_DEALS.filter((d) => !neighbors.includes(d.industry)),
-  };
+  const comps = selectComparables({
+    industry: target.industry,
+    subsector: intake.target.subsector,
+    ebitda: verifiedEbitda,
+    buyerType: intake.deal.buyerType,
+    earnout: intake.deal.earnout === 'yes',
+  });
+  const publicRef = publicReference(target, verifiedEbitda);
+  const market = industryMarket(target.industry);
   const synergies = runSynergies(intake, deal, years);
   const proForma = runProForma(buyer, buyerRows, targetRows, target, synergies, lbo);
   const fit = scoreFit(intake, buyer, target);
+  const financing = runFinancing({
+    ebitda: verifiedEbitda,
+    price: offerEv,
+    fees: lbo.fees,
+    rate: deal.rate,
+    plannedLoan: lbo.debt,
+    sameIndustry: buyer.industry === target.industry,
+    buyerType: intake.deal.buyerType,
+    cashOnHand: buyer.cash,
+  });
 
   const field: FieldRow[] = [];
-  if (comps) {
+  if (comps.enough) {
     field.push({
       id: 'comps',
-      name: 'Comparable companies',
-      detail: `${comps.multipleLow.toFixed(1)}–${comps.multipleHigh.toFixed(1)}× after size discount`,
-      low: comps.evLow,
-      high: comps.evHigh,
+      name: 'Most similar sales',
+      detail: `${comps.count} closest deals, ${comps.q1.toFixed(1)}–${comps.q3.toFixed(1)}× profit`,
+      low: comps.q1 * verifiedEbitda,
+      high: comps.q3 * verifiedEbitda,
+    });
+  } else if (publicRef) {
+    field.push({
+      id: 'comps',
+      name: 'Public companies, size-adjusted',
+      detail: `Fewer than 3 similar sales. ${publicRef.multipleLow.toFixed(1)}–${publicRef.multipleHigh.toFixed(1)}×`,
+      low: publicRef.evLow,
+      high: publicRef.evHigh,
+    });
+  }
+  if (market.deals.length >= 3) {
+    field.push({
+      id: 'precedents',
+      name: 'All sales in this industry',
+      detail: `${market.basis === 'small' ? market.small.length : market.deals.length} deals, middle half ${market.q1.toFixed(1)}–${market.q3.toFixed(1)}×`,
+      low: market.q1 * verifiedEbitda,
+      high: market.q3 * verifiedEbitda,
     });
   }
   field.push({
@@ -602,7 +650,7 @@ export function analyze(intake: Intake): Analysis | null {
     const pvSyn = synergies.runRate / (dcf.wacc - ASSUMPTIONS.terminalGrowth) - synergies.integrationCost;
     field.push({
       id: 'strategic',
-      name: 'DCF plus kept synergies',
+      name: 'DCF plus synergies',
       detail: 'Value to you, the buyer. Not what you should pay.',
       low: dcf.range.low + pvSyn * 0.5,
       high: dcf.range.high + pvSyn,
@@ -633,17 +681,34 @@ export function analyze(intake: Intake): Analysis | null {
     const inside = askingPrice >= standaloneLow && askingPrice <= standaloneHigh;
     points.push(
       `The seller is asking ${fmtM(askingPrice)} (${(askingPrice / verifiedEbitda).toFixed(1)}× supported EBITDA), ${
-        inside ? 'which is inside the standalone range' : askingPrice > standaloneHigh ? 'which is above every standalone method' : 'which is below every standalone method'
+        inside
+          ? 'which is inside the standalone range'
+          : askingPrice > standaloneHigh
+            ? 'which is above every standalone method'
+            : 'which is below every standalone method'
       }.`,
     );
   }
-  if (lbo.irr != null) points.push(`At this price the deal returns ${(lbo.irr * 100).toFixed(1)}% a year on your equity over ${deal.holdYears} years.`);
+  if (lbo.irr != null)
+    points.push(
+      `At this price the deal returns ${(lbo.irr * 100).toFixed(1)}% a year on your equity over ${deal.holdYears} years.`,
+    );
   if (lbo.anyShortfall) {
     tone = 'risk';
     points.push('Cash flow does not cover the required loan payments in at least one year.');
   } else if (lbo.minDscr < 1.25) {
     if (tone === 'good') tone = 'caution';
     points.push(`Lowest debt coverage is ${lbo.minDscr.toFixed(2)}×, under the 1.25× most SBA lenders want.`);
+  }
+  if (!financing.plannedOk) {
+    tone = 'risk';
+    points.push(
+      `You plan to borrow ${fmtM(financing.plannedLoan)}, but SBA rules cap the loan near ${fmtM(financing.maxLoan)}. See the Financing tab.`,
+    );
+  } else {
+    points.push(
+      `A bank loan of about ${fmtM(financing.recommendedLoan)} fits comfortably. You would put in about ${fmtM(financing.buyerCash)} of your own cash.`,
+    );
   }
   if (earningsGap) {
     if (tone === 'good') tone = 'caution';
@@ -653,7 +718,9 @@ export function analyze(intake: Intake): Analysis | null {
   }
   if (proForma.cashLeft < 0) {
     if (tone === 'good') tone = 'caution';
-    points.push(`The equity check is ${fmtM(proForma.equityNeeded)}, more than the ${fmtM(buyer.cash)} of cash you have.`);
+    points.push(
+      `The equity check is ${fmtM(proForma.equityNeeded)}, more than the ${fmtM(buyer.cash)} of cash you have.`,
+    );
   }
   if (fit.score < 50) {
     if (tone === 'good') tone = 'caution';
@@ -674,7 +741,9 @@ export function analyze(intake: Intake): Analysis | null {
     dcf,
     lbo,
     comps,
-    precedents,
+    publicRef,
+    market,
+    financing,
     synergies,
     proForma,
     fit,

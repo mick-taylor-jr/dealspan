@@ -52,7 +52,11 @@ export function scoreFit(intake: Intake, buyer: Company, target: Company): FitRe
     'service',
     'What they sell vs. what you sell',
     pick(f.serviceFit, {
-      same: { answer: 'Same services', tone: 'strength', why: 'Easy to combine crews, pricing and equipment.' },
+      same: {
+        answer: 'Same services',
+        tone: 'strength',
+        why: 'Easy to combine crews, pricing and equipment.',
+      },
       complementary: {
         answer: 'Complementary',
         tone: 'strength',
@@ -70,8 +74,16 @@ export function scoreFit(intake: Intake, buyer: Company, target: Company): FitRe
     'geography',
     'Geography',
     pick(f.geography, {
-      same: { answer: 'Same market', tone: 'strength', why: 'Route density and shared yards are where cost savings come from.' },
-      adjacent: { answer: 'Next-door market', tone: 'strength', why: 'Expands your footprint while keeping management close.' },
+      same: {
+        answer: 'Same market',
+        tone: 'strength',
+        why: 'Route density and shared yards are where cost savings come from.',
+      },
+      adjacent: {
+        answer: 'Next-door market',
+        tone: 'strength',
+        why: 'Expands your footprint while keeping management close.',
+      },
       new: {
         answer: 'New market',
         tone: 'neutral',
@@ -85,7 +97,11 @@ export function scoreFit(intake: Intake, buyer: Company, target: Company): FitRe
     'Customer overlap',
     pick(f.customerOverlap, {
       low: { answer: 'Low', tone: 'strength', why: 'Mostly new customers, so the revenue is additive.' },
-      medium: { answer: 'Some', tone: 'neutral', why: 'Some customers may consolidate vendors and buy less.' },
+      medium: {
+        answer: 'Some',
+        tone: 'neutral',
+        why: 'Some customers may consolidate vendors and buy less.',
+      },
       high: {
         answer: 'High',
         tone: 'risk',
@@ -136,7 +152,11 @@ export function scoreFit(intake: Intake, buyer: Company, target: Company): FitRe
           }
         : top >= 10
           ? { answer: `${top}% of revenue`, tone: 'neutral', why: 'Worth checking the contract terms.' }
-          : { answer: `${top}% of revenue`, tone: 'strength', why: 'Revenue is spread across many customers.' },
+          : {
+              answer: `${top}% of revenue`,
+              tone: 'strength',
+              why: 'Revenue is spread across many customers.',
+            },
     );
   }
   const recurring = num(f.recurringPct);
@@ -145,9 +165,17 @@ export function scoreFit(intake: Intake, buyer: Company, target: Company): FitRe
       'recurring',
       'Recurring revenue',
       recurring >= 60
-        ? { answer: `${recurring}%`, tone: 'strength', why: 'Contracted or repeat revenue makes cash flow predictable.' }
+        ? {
+            answer: `${recurring}%`,
+            tone: 'strength',
+            why: 'Contracted or repeat revenue makes cash flow predictable.',
+          }
         : recurring >= 30
-          ? { answer: `${recurring}%`, tone: 'neutral', why: 'Part of the revenue has to be won again each year.' }
+          ? {
+              answer: `${recurring}%`,
+              tone: 'neutral',
+              why: 'Part of the revenue has to be won again each year.',
+            }
           : {
               answer: `${recurring}%`,
               tone: 'risk',
@@ -160,14 +188,22 @@ export function scoreFit(intake: Intake, buyer: Company, target: Company): FitRe
     'people',
     'Key employees',
     pick(f.keyPeople, {
-      staying: { answer: 'Staying', tone: 'strength', why: 'The people who do the work are part of what you buy.' },
+      staying: {
+        answer: 'Staying',
+        tone: 'strength',
+        why: 'The people who do the work are part of what you buy.',
+      },
       unsure: {
         answer: 'Unsure',
         tone: 'neutral',
         why: 'Use retention bonuses tied to the first year.',
         ask: 'Which managers and lead employees have agreed to stay?',
       },
-      leaving: { answer: 'Leaving', tone: 'risk', why: 'You may be buying equipment and contracts without the team.' },
+      leaving: {
+        answer: 'Leaving',
+        tone: 'risk',
+        why: 'You may be buying equipment and contracts without the team.',
+      },
     }),
   );
   add(

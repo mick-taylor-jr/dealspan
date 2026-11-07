@@ -6,7 +6,10 @@ const shell =
   'flex h-10 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm transition-colors focus-within:border-ink/40';
 
 function digitsOnly(value: string) {
-  return value.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '').slice(0, 12);
+  return value
+    .replace(/[^\d]/g, '')
+    .replace(/^0+(?=\d)/, '')
+    .slice(0, 12);
 }
 
 function decimal(value: string, places = 2) {
@@ -47,6 +50,7 @@ export function TextInput({
   hint,
   multiline,
   className,
+  suggestions,
 }: {
   label: string;
   value: string;
@@ -55,6 +59,7 @@ export function TextInput({
   hint?: ReactNode;
   multiline?: boolean;
   className?: string;
+  suggestions?: string[];
 }) {
   return (
     <Field label={label} hint={hint} className={className}>
@@ -69,13 +74,23 @@ export function TextInput({
             onChange={(event) => onChange(event.target.value)}
           />
         ) : (
-          <input
-            id={id}
-            className="h-10 rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-ink/40"
-            value={value}
-            placeholder={placeholder}
-            onChange={(event) => onChange(event.target.value)}
-          />
+          <>
+            <input
+              id={id}
+              list={suggestions?.length ? `${id}-list` : undefined}
+              className="h-10 rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-ink/40"
+              value={value}
+              placeholder={placeholder}
+              onChange={(event) => onChange(event.target.value)}
+            />
+            {suggestions?.length ? (
+              <datalist id={`${id}-list`}>
+                {suggestions.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
+            ) : null}
+          </>
         )
       }
     </Field>
@@ -92,7 +107,7 @@ export function SelectInput({
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: string[];
+  options: Array<string | { value: string; label: string }>;
   hint?: ReactNode;
 }) {
   return (
@@ -105,11 +120,14 @@ export function SelectInput({
           onChange={(event) => onChange(event.target.value)}
         >
           <option value="">Choose one</option>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
+          {options.map((option) => {
+            const o = typeof option === 'string' ? { value: option, label: option } : option;
+            return (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            );
+          })}
         </select>
       )}
     </Field>
@@ -153,7 +171,11 @@ export function MoneyInput({
   onChange: (value: string) => void;
   hint?: ReactNode;
 }) {
-  return <Field label={label} hint={hint}>{(id) => <BareMoney id={id} value={value} onChange={onChange} />}</Field>;
+  return (
+    <Field label={label} hint={hint}>
+      {(id) => <BareMoney id={id} value={value} onChange={onChange} />}
+    </Field>
+  );
 }
 
 export function NumberInput({

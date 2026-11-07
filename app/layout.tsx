@@ -6,7 +6,8 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Dealspan',
-  description: 'Enter your company and the one you want to buy. Get a DCF, LBO, comps, precedents, synergies and a fit scorecard.',
+  description:
+    'Enter your company and the one you want to buy. Get a DCF, LBO, comps, precedents, synergies and a fit scorecard.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
@@ -22,8 +23,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         <WorkspaceProvider>
           <div className="flex-1">{children}</div>
           <footer className="mx-auto max-w-3xl px-6 py-10 text-center text-xs leading-5 text-faint">
-            Dealspan is a buyer-facing underwriting tool for discussion with a searcher, partner or lender. It is not a
-            formal quality-of-earnings report, not a valuation opinion, and not a credit decision or commitment to lend.
+            Dealspan is a buyer-facing underwriting tool for discussion with a searcher, partner or lender. It
+            is not a formal quality-of-earnings report, not a valuation opinion, and not a credit decision or
+            commitment to lend.
           </footer>
         </WorkspaceProvider>
       </body>

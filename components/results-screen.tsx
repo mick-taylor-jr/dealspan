@@ -8,12 +8,22 @@ import { useWorkspace } from '@/components/workspace';
 import { ASSUMPTION_NOTES, ASSUMPTIONS } from '@/lib/assumptions';
 import { DEMO_STORIES } from '@/lib/demo';
 import { pct, times, usd, usdShort } from '@/lib/format';
-import { DAMODARAN_SOURCE } from '@/lib/industries';
+import { industryLabel } from '@/lib/industries';
+import { CompsTab, FinancingTab, PrecedentsTab, TabIntro } from '@/components/tabs-market';
 import type { Analysis } from '@/lib/model';
-import { THIN_SET_NOTE, type CitedDeal } from '@/lib/precedents';
 import type { Intake } from '@/lib/types';
 
-const TABS = ['Overview', 'Fit', 'Synergies', 'DCF', 'LBO', 'Comps', 'Precedents', 'Combined'] as const;
+const TABS = [
+  'Overview',
+  'Fit',
+  'Synergies',
+  'Financing',
+  'DCF',
+  'LBO',
+  'Comps',
+  'Precedents',
+  'Combined',
+] as const;
 type Tab = (typeof TABS)[number];
 
 export function ResultsScreen() {
@@ -25,9 +35,13 @@ export function ResultsScreen() {
       <div className="mx-auto flex max-w-lg flex-col items-start gap-4 px-6 py-24">
         <h1 className="text-2xl font-semibold tracking-tight">Nothing to analyze yet</h1>
         <p className="text-sm leading-6 text-muted">
-          {missing.length} fields are still empty. Fill in both companies and the deal terms, or load the demo deal.
+          {missing.length} fields are still empty. Fill in both companies and the deal terms, or load the demo
+          deal.
         </p>
-        <Link href="/" className="inline-flex h-11 items-center rounded-full bg-pine px-5 text-sm font-semibold text-white">
+        <Link
+          href="/"
+          className="inline-flex h-11 items-center rounded-full bg-pine px-5 text-sm font-semibold text-white"
+        >
           Go to the intake
         </Link>
       </div>
@@ -38,7 +52,10 @@ export function ResultsScreen() {
     <div className="pb-16">
       <Tombstone a={a} intake={intake} />
       <div className="sticky top-0 z-20 border-b border-line bg-paper/95 backdrop-blur">
-        <nav className="mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto px-5 sm:px-8" aria-label="Analysis sections">
+        <nav
+          className="mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto px-5 sm:px-8"
+          aria-label="Analysis sections"
+        >
           {TABS.map((item) => (
             <button
               key={item}
@@ -50,7 +67,9 @@ export function ResultsScreen() {
               }`}
             >
               {item}
-              {tab === item ? <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-pine" /> : null}
+              {tab === item ? (
+                <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-pine" />
+              ) : null}
             </button>
           ))}
         </nav>
@@ -59,6 +78,7 @@ export function ResultsScreen() {
         {tab === 'Overview' ? <Overview a={a} go={setTab} /> : null}
         {tab === 'Fit' ? <FitTab a={a} intake={intake} /> : null}
         {tab === 'Synergies' ? <SynergyTab a={a} /> : null}
+        {tab === 'Financing' ? <FinancingTab a={a} /> : null}
         {tab === 'DCF' ? <DcfTab a={a} /> : null}
         {tab === 'LBO' ? <LboTab a={a} /> : null}
         {tab === 'Comps' ? <CompsTab a={a} /> : null}
@@ -82,7 +102,9 @@ function Tombstone({ a, intake }: { a: Analysis; intake: Intake }) {
               Edit inputs
             </Link>
             {intake.demo ? (
-              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/80">Hypothetical demo companies</span>
+              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/80">
+                Hypothetical demo companies
+              </span>
             ) : null}
           </div>
           <h1 className="max-w-3xl text-3xl leading-tight font-semibold tracking-[-0.02em] text-balance sm:text-4xl">
@@ -91,7 +113,8 @@ function Tombstone({ a, intake }: { a: Analysis; intake: Intake }) {
             <span className="text-[#f0c66b]">{a.target.name}</span>
           </h1>
           <p className="text-sm text-white/65">
-            {a.target.industry}. {usdShort(a.target.revenue[2])} revenue and {usdShort(a.verifiedEbitda)} EBITDA in 2025.
+            {industryLabel(a.target.industry).split(' (')[0]}. {usdShort(a.target.revenue[2])} revenue and{' '}
+            {usdShort(a.verifiedEbitda)} EBITDA in 2025.
           </p>
         </div>
         <div className="tombstone-in grid min-w-[18rem] grid-cols-2 gap-x-8 gap-y-4 rounded-2xl border border-white/15 bg-white/5 p-5 [animation-delay:120ms]">
@@ -102,16 +125,22 @@ function Tombstone({ a, intake }: { a: Analysis; intake: Intake }) {
           </div>
           <div>
             <div className="text-xs text-white/60">Equity return</div>
-            <div className="text-2xl font-semibold tabular-nums">{a.lbo.irr != null ? pct(a.lbo.irr) : 'n/a'}</div>
-            <div className="text-xs text-white/60">{a.lbo.moic != null ? `${times(a.lbo.moic, 2)} your money` : ''} over {a.deal.holdYears} yrs</div>
+            <div className="text-2xl font-semibold tabular-nums">
+              {a.lbo.irr != null ? pct(a.lbo.irr) : 'n/a'}
+            </div>
+            <div className="text-xs text-white/60">
+              {a.lbo.moic != null ? `${times(a.lbo.moic, 2)} your money` : ''} over {a.deal.holdYears} yrs
+            </div>
           </div>
           <div>
-            <div className="text-xs text-white/60">Kept synergies</div>
+            <div className="text-xs text-white/60">Synergies counted</div>
             <div className="text-lg font-semibold tabular-nums">{usdShort(a.synergies.runRate)}/yr</div>
           </div>
           <div>
             <div className="text-xs text-white/60">Fit score</div>
-            <div className="text-lg font-semibold tabular-nums">{a.fit.answered ? `${a.fit.score} / 100` : 'Not answered'}</div>
+            <div className="text-lg font-semibold tabular-nums">
+              {a.fit.answered ? `${a.fit.score} / 100` : 'Not answered'}
+            </div>
           </div>
         </div>
       </div>
@@ -130,6 +159,10 @@ function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
   const toneWord = { good: 'Looks sound', caution: 'Worth a closer look', risk: 'Red flags' }[a.verdict.tone];
   return (
     <>
+      <TabIntro
+        what="The one-page answer: what the target is worth, how your offer compares, whether the two companies fit, and how to pay for it."
+        why="Start here. Each card points to a tab that shows the work behind the number."
+      />
       <section className={`rounded-2xl border p-6 ${toneStyle}`}>
         <div className="text-sm font-semibold">{toneWord}</div>
         <p className="mt-1 text-xl font-semibold tracking-tight text-balance">{a.verdict.headline}</p>
@@ -143,11 +176,10 @@ function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
         </ul>
       </section>
 
-      <Panel title="What the target is worth, four ways" aside={<span>Enterprise value, cash-free and debt-free</span>}>
+      <Panel title="What the target is worth" aside={<span>Enterprise value, cash-free and debt-free</span>}>
         <FootballField rows={a.field} offer={a.offerEv} asking={a.askingPrice} />
         <p className="mt-2 text-xs leading-5 text-faint">
-          Precedent deals are listed on their own tab. They disclose prices, not EBITDA, so they cannot be drawn as a
-          multiple range here.
+          Gold bars value the target on its own. The blue bar adds the synergies only you can create.
         </p>
       </Panel>
 
@@ -158,31 +190,63 @@ function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
               <li key={line}>{line}</li>
             ))}
           </ul>
-          <button type="button" onClick={() => go('Fit')} className="mt-4 text-sm font-medium text-pine underline underline-offset-4">
+          <button
+            type="button"
+            onClick={() => go('Fit')}
+            className="mt-4 text-sm font-medium text-pine underline underline-offset-4"
+          >
             See the fit scorecard
           </button>
         </Panel>
-        <Panel title="Synergies after haircuts">
-          <Stat label="Kept per year, once running" value={usd(a.synergies.runRate)} prov="calculated" emphasis />
+        <Panel title="Extra profit from combining">
+          <Stat
+            label="Synergies we count, per year"
+            value={usd(a.synergies.runRate)}
+            prov="calculated"
+            emphasis
+          />
           <p className="mt-3 text-sm leading-6 text-muted">
-            Worth {usd(a.synergies.valueAtOffer)} at your {times(a.deal.offerMultiple)} multiple. Synergies are value you
-            create, so they should not be paid to the seller.
+            Money you make or save only because the two companies are together, like sharing one shop or one
+            office. We count part of what you entered, since these rarely work out in full. This value is
+            yours to keep, so don’t pay it to the seller.
           </p>
-          <button type="button" onClick={() => go('Synergies')} className="mt-4 text-sm font-medium text-pine underline underline-offset-4">
+          <button
+            type="button"
+            onClick={() => go('Synergies')}
+            className="mt-4 text-sm font-medium text-pine underline underline-offset-4"
+          >
             See every line
           </button>
         </Panel>
-        <Panel title="Can you pay for it">
+        <Panel title="How to pay for it">
           <div className="grid grid-cols-2 gap-4">
-            <Stat label="Equity check" value={usdShort(a.proForma.equityNeeded)} prov="calculated" />
             <Stat
-              label="Your cash after"
-              value={<span className={a.proForma.cashLeft < 0 ? 'text-risk' : ''}>{usdShort(a.proForma.cashLeft)}</span>}
+              label="Bank loan (SBA 7(a))"
+              value={usdShort(a.financing.recommendedLoan)}
               prov="calculated"
             />
-            <Stat label="Lowest debt coverage" value={times(a.lbo.minDscr, 2)} note="SBA wants 1.25×+" />
-            <Stat label="Combined debt / EBITDA" value={times(a.proForma.leverageAtClose, 2)} note="At close" />
+            <Stat label="Your cash" value={usdShort(a.financing.buyerCash)} prov="calculated" />
+            <Stat
+              label="Loan payment covered"
+              value={times(a.financing.recommendedCoverage, 2)}
+              note={`Lenders want ${times(a.financing.coverageFloor, 2)}+`}
+            />
+            <Stat
+              label="Cash left after"
+              value={
+                <span className={a.financing.cashOnHand - a.financing.buyerCash < 0 ? 'text-risk' : ''}>
+                  {usdShort(a.financing.cashOnHand - a.financing.buyerCash)}
+                </span>
+              }
+            />
           </div>
+          <button
+            type="button"
+            onClick={() => go('Financing')}
+            className="mt-4 text-sm font-medium text-pine underline underline-offset-4"
+          >
+            See how the loan is sized
+          </button>
         </Panel>
       </div>
 
@@ -199,7 +263,8 @@ function Overview({ a, go }: { a: Analysis; go: (tab: Tab) => void }) {
             />
           </div>
           <p className="mt-4 text-sm leading-6 text-muted">
-            Every model on this page uses the {usd(a.verifiedEbitda)} you can support, not the seller’s number.
+            Every model on this page uses the {usd(a.verifiedEbitda)} you can support, not the seller’s
+            number.
           </p>
         </Panel>
       ) : null}
@@ -218,16 +283,31 @@ function FitTab({ a, intake }: { a: Analysis; intake: Intake }) {
   const toneWord = { strength: 'Strength', neutral: 'Watch', risk: 'Risk' };
   return (
     <>
+      <TabIntro
+        what="How well the two companies go together, scored from your answers on the intake, plus questions to ask the seller."
+        why="A deal can look great on paper and still fail if customers leave with the owner or the teams don’t work together."
+      />
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-        <ProfileCard role="buyer" name={a.buyer.name} c={intake.buyer} story={intake.demo ? DEMO_STORIES.buyer : undefined} />
-        <ProfileCard role="target" name={a.target.name} c={intake.target} story={intake.demo ? DEMO_STORIES.target : undefined} />
+        <ProfileCard
+          role="buyer"
+          name={a.buyer.name}
+          c={intake.buyer}
+          story={intake.demo ? DEMO_STORIES.buyer : undefined}
+        />
+        <ProfileCard
+          role="target"
+          name={a.target.name}
+          c={intake.target}
+          story={intake.demo ? DEMO_STORIES.target : undefined}
+        />
       </div>
       <Panel
         title="Fit scorecard"
         aside={
           a.fit.answered ? (
             <span>
-              <span className="text-lg font-semibold text-ink tabular-nums">{a.fit.score}</span> / 100 from {a.fit.answered} factors
+              <span className="text-lg font-semibold text-ink tabular-nums">{a.fit.score}</span> / 100 from{' '}
+              {a.fit.answered} factors
             </span>
           ) : (
             'Answer the fit questions on the intake to score this.'
@@ -239,7 +319,9 @@ function FitTab({ a, intake }: { a: Analysis; intake: Intake }) {
             <div key={factor.id} className="grid gap-2 py-3 sm:grid-cols-[13rem_7rem_1fr] sm:items-baseline">
               <span className="text-sm font-medium">{factor.name}</span>
               <span>
-                <span className={`rounded px-2 py-0.5 text-xs font-medium ${toneCls[factor.tone]}`}>{toneWord[factor.tone]}</span>
+                <span className={`rounded px-2 py-0.5 text-xs font-medium ${toneCls[factor.tone]}`}>
+                  {toneWord[factor.tone]}
+                </span>
               </span>
               <span className="text-sm leading-6 text-muted">
                 <span className="font-medium text-ink">{factor.answer}.</span> {factor.why}
@@ -291,7 +373,7 @@ function ProfileCard({
         <h3 className="text-lg font-semibold">{name}</h3>
         <p className="mt-2 text-sm leading-6 text-ink/80">{story ?? c.description}</p>
         <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-          <Def k="Industry" v={c.industry} />
+          <Def k="Industry" v={industryLabel(c.industry)} />
           <Def k="Where" v={c.location} />
           <Def k="Customers" v={c.customers} />
           <Def k="Employees" v={c.employees} />
@@ -317,32 +399,56 @@ function SynergyTab({ a }: { a: Analysis }) {
   const premium = a.offerEv - (a.dcf.gordon?.ev ?? a.dcf.exit.ev);
   return (
     <>
+      <TabIntro
+        what={
+          <>
+            <span className="font-medium text-ink">Synergies</span> are the extra money you make or save only
+            because the two companies are together. Saving money: one office, one shop, buying supplies in
+            bulk. Making money: selling your services to their customers.
+          </>
+        }
+        why="They are why you can afford to pay more than other buyers. But they come from your work after the deal, not from the seller, so keep them out of the price. We count only part of each one because they rarely work out in full."
+      />
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Panel>
-          <Stat label="Kept per year, once running" value={usd(s.runRate)} prov="calculated" emphasis />
-        </Panel>
-        <Panel>
-          <Stat label={`Value at your ${times(a.deal.offerMultiple)}`} value={usd(s.valueAtOffer)} prov="calculated" emphasis />
-        </Panel>
-        <Panel>
-          <Stat label="One-time cost to combine" value={usd(s.integrationCost)} prov="user-entered" emphasis />
+          <Stat label="Synergies we count, per year" value={usd(s.runRate)} prov="calculated" emphasis />
         </Panel>
         <Panel>
           <Stat
-            label="Premium over standalone DCF"
+            label={`Value at your ${times(a.deal.offerMultiple)}`}
+            value={usd(s.valueAtOffer)}
+            prov="calculated"
+            emphasis
+          />
+        </Panel>
+        <Panel>
+          <Stat
+            label="One-time cost to combine"
+            value={usd(s.integrationCost)}
+            prov="user-entered"
+            emphasis
+          />
+        </Panel>
+        <Panel>
+          <Stat
+            label="Price above the DCF value"
             value={<span className={premium > 0 ? 'text-risk' : ''}>{usd(premium)}</span>}
             prov="calculated"
-            note={premium > 0 ? 'You are paying for value you create' : 'You are not paying for synergies'}
+            note={
+              premium > 0
+                ? 'You are paying the seller for your own synergies'
+                : 'You are not paying for synergies'
+            }
             emphasis
           />
         </Panel>
       </div>
-      <Panel title="Every synergy, before and after the haircut">
+      <Panel title="Each synergy: what you entered and what we count">
         {s.lines.length === 0 ? (
           <p className="text-sm text-muted">No synergies were entered.</p>
         ) : (
           <Table
-            head={['Synergy', 'Type', 'You entered', 'EBITDA impact', 'Kept']}
+            head={['Synergy', 'Type', 'You entered', 'Added profit', 'We count']}
             rows={s.lines.map((line) => [
               line.description,
               line.kind === 'cost' ? 'Cost saving' : 'New revenue',
@@ -356,13 +462,18 @@ function SynergyTab({ a }: { a: Analysis }) {
           />
         )}
         <p className="mt-4 text-sm leading-6 text-muted">
-          Cost savings keep {pct(ASSUMPTIONS.costSynergyRetained, 0)}. New revenue counts at a{' '}
-          {pct(ASSUMPTIONS.revenueSynergyMargin, 0)} margin, then keeps {pct(ASSUMPTIONS.revenueSynergyRetained, 0)}. Half
-          shows up in year one. All three are labeled assumptions.
+          We count {pct(ASSUMPTIONS.costSynergyRetained, 0)} of each cost saving. New revenue only adds the
+          profit on it (we assume a {pct(ASSUMPTIONS.revenueSynergyMargin, 0)} margin), and we count{' '}
+          {pct(ASSUMPTIONS.revenueSynergyRetained, 0)} of that. Half shows up in the first year. These are our
+          assumptions.
         </p>
       </Panel>
       <Panel title="Synergies by year">
-        <Columns labels={s.byYear.slice(0, 5).map((_, i) => String(2026 + i))} values={s.byYear.slice(0, 5)} color={COLORS.syn} />
+        <Columns
+          labels={s.byYear.slice(0, 5).map((_, i) => String(2026 + i))}
+          values={s.byYear.slice(0, 5)}
+          color={COLORS.syn}
+        />
       </Panel>
     </>
   );
@@ -374,12 +485,26 @@ function DcfTab({ a }: { a: Analysis }) {
   const d = a.dcf;
   return (
     <>
+      <TabIntro
+        what="What the target is worth today based on the cash it should produce over the next five years and after. No synergies."
+        why="It values the business on its own cash, not on what others paid. If your price is far above this, you are betting things go better than planned."
+      />
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Panel>
-          <Stat label="Value, perpetuity growth" value={d.gordon ? usd(d.gordon.ev) : 'n/a'} prov="calculated" emphasis />
+          <Stat
+            label="Value, perpetuity growth"
+            value={d.gordon ? usd(d.gordon.ev) : 'n/a'}
+            prov="calculated"
+            emphasis
+          />
         </Panel>
         <Panel>
-          <Stat label={`Value, ${times(a.deal.exitMultiple)} exit`} value={usd(d.exit.ev)} prov="calculated" emphasis />
+          <Stat
+            label={`Value, ${times(a.deal.exitMultiple)} exit`}
+            value={usd(d.exit.ev)}
+            prov="calculated"
+            emphasis
+          />
         </Panel>
         <Panel>
           <Stat
@@ -493,12 +618,26 @@ function LboTab({ a }: { a: Analysis }) {
   const l = a.lbo;
   return (
     <>
+      <TabIntro
+        what="Your return if you pay this price, borrow the amount you entered, use the profits to pay down the loan and sell in a few years."
+        why="It shows whether the deal pays you enough for the risk, and the most you can pay and still hit the return you want."
+      />
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Panel>
-          <Stat label="Return on equity (IRR)" value={l.irr != null ? pct(l.irr) : 'n/a'} prov="calculated" emphasis />
+          <Stat
+            label="Return on equity (IRR)"
+            value={l.irr != null ? pct(l.irr) : 'n/a'}
+            prov="calculated"
+            emphasis
+          />
         </Panel>
         <Panel>
-          <Stat label="Money multiple" value={l.moic != null ? times(l.moic, 2) : 'n/a'} prov="calculated" emphasis />
+          <Stat
+            label="Money multiple"
+            value={l.moic != null ? times(l.moic, 2) : 'n/a'}
+            prov="calculated"
+            emphasis
+          />
         </Panel>
         <Panel>
           <Stat
@@ -581,8 +720,9 @@ function LboTab({ a }: { a: Analysis }) {
           </table>
         </div>
         <p className="mt-4 text-sm leading-6 text-muted">
-          Exit in {a.deal.holdYears} years at {times(a.deal.exitMultiple)} {usd(l.exitEbitda)} of EBITDA = {usd(l.exitEv)}. Less
-          remaining debt, plus cash, leaves {usd(l.exitEquity)} for you on {usd(l.equity)} invested.
+          Exit in {a.deal.holdYears} years at {times(a.deal.exitMultiple)} {usd(l.exitEbitda)} of EBITDA ={' '}
+          {usd(l.exitEv)}. Less remaining debt, plus cash, leaves {usd(l.exitEquity)} for you on{' '}
+          {usd(l.equity)} invested.
         </p>
       </Panel>
       <Panel title="Sensitivity: IRR by entry and exit multiple">
@@ -615,111 +755,25 @@ function SU({ title, items }: { title: string; items: Array<{ name: string; amou
   );
 }
 
-/* ---------- Comps ---------- */
-
-function CompsTab({ a }: { a: Analysis }) {
-  const c = a.comps;
-  if (!c) return <Panel title="Comparable companies">No benchmark for this industry.</Panel>;
-  return (
-    <>
-      <div className="grid gap-6 sm:grid-cols-3">
-        <Panel>
-          <Stat label="Public-company EV / EBITDA" value={times(c.publicMultiple, 2)} prov="cited" note={c.sector} emphasis />
-        </Panel>
-        <Panel>
-          <Stat
-            label="Size discount for a private company"
-            value={`${pct(c.discount.low, 0)}–${pct(c.discount.high, 0)}`}
-            prov="assumed"
-            note={c.discount.band}
-            emphasis
-          />
-        </Panel>
-        <Panel>
-          <Stat
-            label="Implied value range"
-            value={`${usdShort(c.evLow)}–${usdShort(c.evHigh)}`}
-            note={`${times(c.multipleLow)}–${times(c.multipleHigh)} × ${usd(a.verifiedEbitda)}`}
-            prov="calculated"
-            emphasis
-          />
-        </Panel>
-      </div>
-      <Panel title="How this range is built">
-        <ol className="flex list-decimal flex-col gap-2 pl-5 text-sm leading-6">
-          <li>
-            Start from the median EV / EBITDA of US public companies in <span className="font-medium">{c.sector}</span>:{' '}
-            {times(c.publicMultiple, 2)}.
-          </li>
-          <li>
-            Public multiples are far too high for a company this size. Apply a {pct(c.discount.low, 0)}–{pct(c.discount.high, 0)}{' '}
-            discount for {c.discount.band.toLowerCase()}. The discount is an assumption, labeled as one.
-          </li>
-          <li>
-            Multiply the adjusted {times(c.multipleLow)}–{times(c.multipleHigh)} by the target’s supported 2025 EBITDA of{' '}
-            {usd(a.verifiedEbitda)}.
-          </li>
-        </ol>
-        <p className="mt-4 text-xs leading-5 text-faint">
-          Source:{' '}
-          <a className="underline" href={DAMODARAN_SOURCE.url} target="_blank" rel="noreferrer">
-            {DAMODARAN_SOURCE.title}
-          </a>
-          , positive-EBITDA firms. Raw public multiples are never applied to a private company.
-        </p>
-      </Panel>
-    </>
-  );
-}
-
-/* ---------- Precedents ---------- */
-
-function PrecedentsTab({ a }: { a: Analysis }) {
-  const { matched, others } = a.precedents;
-  return (
-    <>
-      <Panel
-        title="Closed deals in a nearby industry"
-        aside={matched.length ? `${matched.length} cited` : 'None for this industry'}
-      >
-        {matched.length ? <DealTable deals={matched} /> : <p className="text-sm text-muted">No cited deals match this industry yet.</p>}
-      </Panel>
-      {others.length ? (
-        <Panel title="Other small cited deals, for scale">
-          <DealTable deals={others} />
-        </Panel>
-      ) : null}
-      <p className="text-xs leading-5 text-faint">{THIN_SET_NOTE}</p>
-    </>
-  );
-}
-
-function DealTable({ deals }: { deals: CitedDeal[] }) {
-  return (
-    <Table
-      head={['Closed', 'Buyer', 'Target', 'Disclosed price', 'Source']}
-      rows={deals.map((d) => [
-        d.date,
-        d.acquirer,
-        d.target,
-        d.disclosed,
-        <a key="s" className="text-pine underline underline-offset-2" href={d.citation} target="_blank" rel="noreferrer">
-          Filing
-        </a>,
-      ])}
-    />
-  );
-}
-
 /* ---------- Combined ---------- */
 
 function CombinedTab({ a }: { a: Analysis }) {
   const p = a.proForma;
   return (
     <>
+      <TabIntro
+        what="Your company after the deal: combined sales, profit, debt and cash, with synergies phased in."
+        why="A good deal makes your whole company stronger. Watch that debt and cash don’t get stretched too thin."
+      />
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Panel>
-          <Stat label="Combined 2025 revenue" value={usd(p.years[0].revenue)} prov="calculated" note={`+${pct(p.revenueAccretion, 0)} for you`} emphasis />
+          <Stat
+            label="Combined 2025 revenue"
+            value={usd(p.years[0].revenue)}
+            prov="calculated"
+            note={`+${pct(p.revenueAccretion, 0)} for you`}
+            emphasis
+          />
         </Panel>
         <Panel>
           <Stat
@@ -763,8 +817,18 @@ function CombinedTab({ a }: { a: Analysis }) {
         <Table
           head={['', a.buyer.name, a.target.name, 'Combined']}
           rows={[
-            ['Revenue', usd(a.buyer.revenue[2]), usd(a.target.revenue[2]), usd(a.buyer.revenue[2] + a.target.revenue[2])],
-            ['EBITDA', usd(a.buyer.ebitda[2]), usd(a.target.ebitda[2]), usd(a.buyer.ebitda[2] + a.target.ebitda[2])],
+            [
+              'Revenue',
+              usd(a.buyer.revenue[2]),
+              usd(a.target.revenue[2]),
+              usd(a.buyer.revenue[2] + a.target.revenue[2]),
+            ],
+            [
+              'EBITDA',
+              usd(a.buyer.ebitda[2]),
+              usd(a.target.ebitda[2]),
+              usd(a.buyer.ebitda[2] + a.target.ebitda[2]),
+            ],
             [
               'EBITDA margin',
               pct(a.buyer.ebitda[2] / a.buyer.revenue[2]),
@@ -804,7 +868,10 @@ function Table({ head, rows, foot }: { head: string[]; rows: ReactNode[][]; foot
           {rows.map((row, ri) => (
             <tr key={ri} className="border-b border-line/60">
               {row.map((cell, ci) => (
-                <td key={ci} className={`py-2.5 pr-3 tabular-nums ${ci === 0 ? 'text-left font-medium' : 'text-left sm:text-right'}`}>
+                <td
+                  key={ci}
+                  className={`py-2.5 pr-3 tabular-nums ${ci === 0 ? 'text-left font-medium' : 'text-left sm:text-right'}`}
+                >
                   {cell}
                 </td>
               ))}
@@ -815,7 +882,10 @@ function Table({ head, rows, foot }: { head: string[]; rows: ReactNode[][]; foot
           <tfoot>
             <tr className="font-semibold">
               {foot.map((cell, ci) => (
-                <td key={ci} className={`py-2.5 pr-3 tabular-nums ${ci === 0 ? 'text-left' : 'text-left sm:text-right'}`}>
+                <td
+                  key={ci}
+                  className={`py-2.5 pr-3 tabular-nums ${ci === 0 ? 'text-left' : 'text-left sm:text-right'}`}
+                >
                   {cell}
                 </td>
               ))}
@@ -887,12 +957,17 @@ function Assumptions() {
     <details className="group rounded-2xl border border-line bg-card p-6">
       <summary className="flex cursor-pointer list-none items-center justify-between text-base font-semibold">
         Assumptions Dealspan made for you
-        <span className="text-sm font-normal text-muted group-open:hidden">Show {ASSUMPTION_NOTES.length}</span>
+        <span className="text-sm font-normal text-muted group-open:hidden">
+          Show {ASSUMPTION_NOTES.length}
+        </span>
         <span className="hidden text-sm font-normal text-muted group-open:inline">Hide</span>
       </summary>
       <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
         {ASSUMPTION_NOTES.map((n) => (
-          <div key={n.name} className="flex items-start justify-between gap-4 border-b border-line/60 pb-3 text-sm">
+          <div
+            key={n.name}
+            className="flex items-start justify-between gap-4 border-b border-line/60 pb-3 text-sm"
+          >
             <div>
               <div className="font-medium">{n.name}</div>
               <div className="text-xs leading-5 text-faint">{n.why}</div>
@@ -905,7 +980,8 @@ function Assumptions() {
         ))}
       </div>
       <p className="mt-4 flex items-center gap-2 text-xs text-faint">
-        <Swatch color={COLORS.line} /> Everything else on this page is either something you typed or calculated from it.
+        <Swatch color={COLORS.line} /> Everything else on this page is either something you typed or
+        calculated from it.
       </p>
     </details>
   );

@@ -22,12 +22,15 @@ export type CompanyInput = {
 };
 
 export type TargetExtras = {
+  subsector: string;
   sellerEbitda: string;
   askingPrice: string;
   marginTarget: string;
 };
 
 export type DealInput = {
+  buyerType: 'strategic' | 'financial' | 'individual';
+  earnout: '' | 'yes' | 'no';
   offerMultiple: string;
   feesPct: string;
   leverage: string;
@@ -95,8 +98,10 @@ export function emptyIntake(): Intake {
   return {
     demo: false,
     buyer: emptyCompany(),
-    target: { ...emptyCompany(), sellerEbitda: '', askingPrice: '', marginTarget: '' },
+    target: { ...emptyCompany(), subsector: '', sellerEbitda: '', askingPrice: '', marginTarget: '' },
     deal: {
+      buyerType: 'strategic',
+      earnout: 'no',
       offerMultiple: '',
       feesPct: '3',
       leverage: '',

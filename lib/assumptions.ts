@@ -25,13 +25,22 @@ export const ASSUMPTION_NOTES: Array<{ name: string; value: string; why: string 
   { name: 'Beta', value: '1.0', why: 'Market-average risk before small-company premiums.' },
   { name: 'Equity risk premium', value: '5.0%', why: 'Common long-run estimate.' },
   { name: 'Size premium', value: '6.0%', why: 'Small private companies are riskier than public ones.' },
-  { name: 'Company-specific premium', value: '8.0%', why: 'Owner dependence, thin management, customer concentration.' },
+  {
+    name: 'Company-specific premium',
+    value: '8.0%',
+    why: 'Owner dependence, thin management, customer concentration.',
+  },
   { name: 'Debt share of capital', value: '30%', why: 'Weight on debt in the discount rate.' },
   { name: 'Terminal growth', value: '2.5%', why: 'Long-run growth after year 5, near inflation.' },
-  { name: 'Cost synergies kept', value: '80%', why: 'Cost savings usually show up, but rarely in full.' },
-  { name: 'Revenue synergies kept', value: '50%', why: 'Cross-selling is the least reliable synergy.' },
+  { name: 'Cost savings we count', value: '80%', why: 'Cost savings usually show up, but rarely in full.' },
+  {
+    name: 'New revenue we count',
+    value: '50%',
+    why: 'Selling to each other’s customers is the least reliable synergy.',
+  },
   { name: 'Margin on new revenue', value: '30%', why: 'New revenue still carries labor and materials cost.' },
-  { name: 'Synergy phase-in', value: '50% in year 1, then 100%', why: 'Integration takes time.' },
+  { name: 'Synergy timing', value: '50% in year 1, then 100%', why: 'Combining two companies takes time.' },
+  { name: 'Loan coverage we aim for', value: '1.50×', why: 'Room for a bad year, above the SBA minimum.' },
 ];
 
 /** Size discount applied to public multiples, by target EBITDA. */

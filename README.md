@@ -11,14 +11,15 @@ is entered once, on the intake page. The results workspace then builds, with no 
   WACC × growth sensitivity.
 - **LBO**: sources and uses, cash sweep debt paydown, IRR / MOIC, debt coverage, most you can pay for your target
   return, entry × exit sensitivity.
-- **Comps**: Damodaran January 2026 public EV/EBITDA for the target’s sector, size-discounted (never applied raw).
-- **Precedents**: eight cited small closed deals, filtered to the target’s industry.
+- **Financing**: recommended SBA 7(a) loan and buyer cash under SOP 50 10 8.1 (coverage, 10% equity, $5M cap), each number sourced.
+- **Comps**: the closest sold businesses from `lib/deals.ts`, scored 1–100 with DealSpan’s similarity rules (`lib/comps.ts`).
+- **Precedents**: every sale in the target’s industry charted as price ÷ profit, with details and source links.
 - **Combined**: buyer + target + phased synergies, leverage before and after, cash left after the equity check.
 
 Tax is 21%. Every other assumption is listed on screen and labeled `assumed`. The demo button loads two
 hypothetical companies (Northline Grounds Co. buying Greenridge Landscape Co.); neither is real.
 
-Math is deterministic TypeScript in `lib/` (`model.ts`, `fit.ts`, `assumptions.ts`). No API keys or environment
+Deal data comes from the DealSpan comparable deals workbook (76 deals, Deals tab). Math is deterministic TypeScript in `lib/` (`model.ts`, `comps.ts`, `financing.ts`, `fit.ts`, `assumptions.ts`). No API keys or environment
 variables. Inputs are kept in the browser’s local storage only.
 
 ```bash

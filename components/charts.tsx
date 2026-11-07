@@ -12,12 +12,23 @@ function niceTicks(min: number, max: number, count = 5) {
   const step = [1, 2, 2.5, 5, 10].map((m) => m * pow).find((s) => s >= raw) ?? raw;
   const start = Math.floor(min / step) * step;
   const ticks: number[] = [];
-  for (let v = start; v <= max + step * 0.001; v += step) ticks.push(v);
+  for (let v = start; ; v += step) {
+    ticks.push(v);
+    if (v >= max - step * 0.001) break;
+  }
   return ticks;
 }
 
 /** Valuation ranges by method, with your offer and the asking price as vertical markers. */
-export function FootballField({ rows, offer, asking }: { rows: FieldRow[]; offer: number; asking: number | null }) {
+export function FootballField({
+  rows,
+  offer,
+  asking,
+}: {
+  rows: FieldRow[];
+  offer: number;
+  asking: number | null;
+}) {
   const [hover, setHover] = useState<string | null>(null);
   const values = rows.flatMap((r) => [r.low, r.high]).concat(offer, asking ?? offer);
   const ticks = niceTicks(Math.min(...values) * 0.85, Math.max(...values) * 1.05);
@@ -38,7 +49,8 @@ export function FootballField({ rows, offer, asking }: { rows: FieldRow[]; offer
         </span>
         {asking ? (
           <span className="flex items-center gap-2">
-            <span aria-hidden className="inline-block h-3 w-0 border-l-2 border-dashed border-risk" /> Asking price
+            <span aria-hidden className="inline-block h-3 w-0 border-l-2 border-dashed border-risk" /> Asking
+            price
           </span>
         ) : null}
       </div>
@@ -97,15 +109,16 @@ export function FootballField({ rows, offer, asking }: { rows: FieldRow[]; offer
                     <div className="tabular-nums text-muted">
                       {usd(row.low)} – {usd(row.high)}
                     </div>
-                    <div className="tabular-nums text-faint">
-                      Midpoint {usd((row.low + row.high) / 2)}
-                    </div>
+                    <div className="tabular-nums text-faint">Midpoint {usd((row.low + row.high) / 2)}</div>
                   </div>
                 ) : null}
               </div>
             );
           })}
-          <div className="pointer-events-none absolute inset-x-0 top-0" style={{ height: `${rows.length * 4}rem` }}>
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0"
+            style={{ height: `${rows.length * 4}rem` }}
+          >
             <Marker left={x(offer)} label={`Offer ${usdShort(offer)}`} solid />
             {asking ? <Marker left={x(asking)} label={`Ask ${usdShort(asking)}`} below /> : null}
           </div>
@@ -127,7 +140,17 @@ export function FootballField({ rows, offer, asking }: { rows: FieldRow[]; offer
   );
 }
 
-function Marker({ left, label, solid, below }: { left: number; label: string; solid?: boolean; below?: boolean }) {
+function Marker({
+  left,
+  label,
+  solid,
+  below,
+}: {
+  left: number;
+  label: string;
+  solid?: boolean;
+  below?: boolean;
+}) {
   return (
     <div className="absolute inset-y-0" style={{ left: `${left}%` }}>
       <div className={`h-full ${solid ? 'w-0.5 bg-ink' : 'w-0 border-l-2 border-dashed border-risk'}`} />
@@ -163,14 +186,22 @@ export function StackedColumns({ labels, series }: { labels: string[]; series: S
       <div className="relative flex gap-3" style={{ height: H + 24 }}>
         <div className="relative w-12 shrink-0" style={{ height: H + 24 }}>
           {ticks.map((t) => (
-            <span key={t} className="absolute right-0 translate-y-1/2 text-[11px] tabular-nums text-faint" style={{ bottom: `${(t / top) * H + 24}px` }}>
+            <span
+              key={t}
+              className="absolute right-0 translate-y-1/2 text-[11px] tabular-nums text-faint"
+              style={{ bottom: `${(t / top) * H + 24}px` }}
+            >
               {usdShort(t)}
             </span>
           ))}
         </div>
         <div className="relative flex-1">
           {ticks.map((t) => (
-            <div key={t} className="absolute inset-x-0 border-t border-line" style={{ bottom: `${(t / top) * H + 24}px` }} />
+            <div
+              key={t}
+              className="absolute inset-x-0 border-t border-line"
+              style={{ bottom: `${(t / top) * H + 24}px` }}
+            />
           ))}
           <div className="absolute inset-x-0 bottom-6 flex items-end justify-around" style={{ height: H }}>
             {labels.map((label, i) => {
@@ -187,7 +218,8 @@ export function StackedColumns({ labels, series }: { labels: string[]; series: S
                     {series.map((s, si) => {
                       const h = (s.values[i] / top) * H;
                       acc += s.values[i];
-                      const last = si === series.length - 1 || series.slice(si + 1).every((n) => n.values[i] === 0);
+                      const last =
+                        si === series.length - 1 || series.slice(si + 1).every((n) => n.values[i] === 0);
                       return s.values[i] > 0 ? (
                         <div
                           key={s.name}
@@ -199,7 +231,10 @@ export function StackedColumns({ labels, series }: { labels: string[]; series: S
                   </div>
                   <span className="absolute -bottom-6 text-xs text-muted">{label}</span>
                   {hover === i ? (
-                    <div role="tooltip" className="absolute bottom-full z-10 mb-2 w-48 rounded-lg border border-line bg-white p-2.5 text-xs shadow-sm">
+                    <div
+                      role="tooltip"
+                      className="absolute bottom-full z-10 mb-2 w-48 rounded-lg border border-line bg-white p-2.5 text-xs shadow-sm"
+                    >
                       <div className="mb-1 font-medium">{label}</div>
                       {series.map((s) => (
                         <div key={s.name} className="flex items-center justify-between gap-2 tabular-nums">
@@ -235,10 +270,132 @@ export function Columns({ labels, values, color }: { labels: string[]; values: n
       {labels.map((label, i) => (
         <div key={label} className="flex flex-col items-center gap-1" title={`${label}: ${usd(values[i])}`}>
           <span className="text-[11px] tabular-nums text-muted">{usdShort(values[i])}</span>
-          <div className="w-6 rounded-t sm:w-7" style={{ height: Math.max(1, (values[i] / top) * H), background: color }} />
+          <div
+            className="w-6 rounded-t sm:w-7"
+            style={{ height: Math.max(1, (values[i] / top) * H), background: color }}
+          />
           <span className="pb-1 text-xs text-muted">{label}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** One bar per sold business: its price as a multiple of profit, with your offer and the middle of the market marked. */
+export function MultipleBars({
+  rows,
+  offer,
+  median,
+}: {
+  rows: Array<{ id: string; name: string; sub: string; multiple: number; highlight?: boolean }>;
+  offer: number;
+  median: number;
+}) {
+  const max = Math.ceil(Math.max(...rows.map((r) => r.multiple), offer, median) + 0.5);
+  const x = (v: number) => (v / max) * 100;
+  const ticks = Array.from({ length: Math.floor(max / 2) + 1 }, (_, i) => i * 2);
+  return (
+    <div>
+      <div className="mb-8 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
+        <span className="flex items-center gap-2">
+          <Swatch color={COLORS.target} /> Price ÷ profit
+        </span>
+        <span className="flex items-center gap-2">
+          <Swatch color={COLORS.syn} /> Also one of your closest matches
+        </span>
+        <span className="flex items-center gap-2">
+          <span aria-hidden className="inline-block h-3 w-0.5 bg-ink" /> Your offer
+        </span>
+        <span className="flex items-center gap-2">
+          <span aria-hidden className="inline-block h-3 w-0 border-l-2 border-dashed border-muted" /> Middle
+          of the market
+        </span>
+      </div>
+      <div className="grid grid-cols-[minmax(7rem,15rem)_1fr] gap-x-4">
+        <div className="flex flex-col">
+          {rows.map((r) => (
+            <div key={r.id} className="flex h-11 flex-col justify-center">
+              <span className="truncate text-sm font-medium leading-5" title={r.name}>
+                {r.name}
+              </span>
+              <span className="truncate text-xs leading-4 text-faint">{r.sub}</span>
+            </div>
+          ))}
+        </div>
+        <div className="relative mr-10">
+          {rows.map((r) => (
+            <div key={r.id} className="relative h-11 border-b border-line/60">
+              <div
+                className="absolute left-0 top-1/2 h-4 -translate-y-1/2 rounded-r"
+                style={{ width: `${x(r.multiple)}%`, background: r.highlight ? COLORS.syn : COLORS.target }}
+                title={`${r.name}: ${r.multiple.toFixed(1)}×`}
+              />
+              <span
+                className="absolute top-1/2 -translate-y-1/2 pl-2 text-xs font-medium tabular-nums"
+                style={{ left: `${x(r.multiple)}%` }}
+              >
+                {r.multiple.toFixed(1)}×
+              </span>
+            </div>
+          ))}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0"
+            style={{ height: `${rows.length * 2.75}rem` }}
+          >
+            <div className="absolute inset-y-0" style={{ left: `${x(median)}%` }}>
+              <div className="h-full w-0 border-l-2 border-dashed border-muted" />
+            </div>
+            <div className="absolute inset-y-0" style={{ left: `${x(offer)}%` }}>
+              <div className="h-full w-0.5 bg-ink" />
+              <span className="absolute -top-6 -translate-x-1/2 whitespace-nowrap rounded bg-ink px-1.5 text-[11px] font-semibold text-white">
+                Your offer {offer.toFixed(1)}×
+              </span>
+            </div>
+          </div>
+          <div className="relative h-7">
+            {ticks.map((t) => (
+              <span
+                key={t}
+                className="absolute top-2 -translate-x-1/2 text-[11px] tabular-nums text-faint"
+                style={{ left: `${x(t)}%` }}
+              >
+                {t}×
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A single 100% bar that splits the price into its funding sources. */
+export function SplitBar({ parts }: { parts: Array<{ name: string; amount: number; color: string }> }) {
+  const total = parts.reduce((s, p) => s + p.amount, 0) || 1;
+  return (
+    <div>
+      <div className="flex h-10 w-full gap-[2px] overflow-hidden rounded-lg">
+        {parts
+          .filter((p) => p.amount > 0)
+          .map((p) => (
+            <div
+              key={p.name}
+              className="h-full"
+              style={{ width: `${(p.amount / total) * 100}%`, background: p.color }}
+              title={`${p.name}: ${usd(p.amount)}`}
+            />
+          ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        {parts.map((p) => (
+          <span key={p.name} className="flex items-center gap-2">
+            <Swatch color={p.color} />
+            <span className="text-muted">{p.name}</span>
+            <span className="font-semibold tabular-nums">{usd(p.amount)}</span>
+            <span className="text-xs text-faint">{Math.round((p.amount / total) * 100)}%</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

@@ -16,7 +16,7 @@ type WorkspaceValue = {
 };
 
 const WorkspaceContext = createContext<WorkspaceValue | null>(null);
-const KEY = 'dealspan:intake:v2';
+const KEY = 'dealspan:intake:v3';
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [intake, setIntakeState] = useState<Intake>(emptyIntake);

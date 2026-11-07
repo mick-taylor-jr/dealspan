@@ -33,8 +33,8 @@ test('demo intake is complete and runs every model', () => {
   assert.ok(a.earningsGap);
   close(a.earningsGap.gap, 79_000);
   close(a.earningsGap.overpay, 221_200);
-  assert.ok(a.comps);
-  assert.equal(a.field.length, 4);
+  assert.equal(a.comps.count, 3);
+  assert.equal(a.field.length, 5);
   assert.ok(a.lbo.irr != null && a.lbo.irr > 0);
 });
 
@@ -101,4 +101,82 @@ test('LBO with no debt and flat business: IRR matches multiple arbitrage plus ca
 test('WACC built from labeled assumptions', () => {
   // Ke = 4.5 + 5 + 6 + 8 = 23.5%; WACC = 0.7 × 23.5% + 0.3 × 10% × 0.79
   close(wacc(0.1), 0.7 * 0.235 + 0.3 * 0.1 * 0.79, 1e-12);
+});
+
+import { scoreComparable, selectComparables, weightedMedian } from './comps';
+import { DEALS } from './deals';
+import { runFinancing } from './financing';
+
+test('deal database loads all 76 workbook rows', () => {
+  assert.equal(DEALS.length, 76);
+  assert.equal(DEALS.filter((d) => d.ebitda != null).length, 53);
+});
+
+test('similarity score follows the DealSpan rules', () => {
+  const subject = {
+    industry: 'Home & commercial services (HVAC, plumbing, electrical)',
+    subsector: 'Commercial HVAC / mechanical contractor',
+    ebitda: 1_369_050,
+    buyerType: 'strategic' as const,
+    earnout: false,
+  };
+  const jake = DEALS.find((d) => d.target === 'Jake Marshall LLC')!;
+  const s = scoreComparable(jake, subject)!;
+  // 25 same work + size + 15 same buyer + 10 structure + 0 recency (2021 is 5 yrs → 5) + 10 actual profit
+  const size = 30 * (1 - Math.log(4_500_000 / 1_369_050) / Math.log(5));
+  close(s.score, 25 + size + 15 + 10 + 5 + 10, 1e-9);
+  const sel = selectComparables(subject);
+  // Pioneer Power (7.3× bigger) and 1901 Inc. are never used.
+  assert.ok(!sel.used.some((d) => d.target === 'Pioneer Power' || d.target === '1901 Inc.'));
+  assert.ok(sel.used.every((d) => d.score >= 40 && d.parts.size > 0));
+});
+
+test('weighted median picks the value where half the weight is reached', () => {
+  assert.equal(
+    weightedMedian([
+      { v: 1, w: 1 },
+      { v: 2, w: 1 },
+      { v: 10, w: 5 },
+    ]),
+    10,
+  );
+  assert.equal(
+    weightedMedian([
+      { v: 1, w: 3 },
+      { v: 2, w: 1 },
+      { v: 3, w: 1 },
+    ]),
+    1,
+  );
+});
+
+test('financing respects the 10% equity floor and coverage', () => {
+  const f = runFinancing({
+    ebitda: 331_000,
+    price: 926_800,
+    fees: 37_072,
+    rate: 0.095,
+    plannedLoan: 579_250,
+    sameIndustry: true,
+    buyerType: 'strategic',
+    cashOnHand: 1_100_000,
+  });
+  assert.equal(f.category, 'Business expansion');
+  assert.equal(f.coverageFloor, 1.15);
+  assert.ok(f.maxLoan <= f.projectCost * 0.9);
+  assert.ok(f.recommendedCoverage >= 1.5);
+  close(f.buyerCash + f.recommendedLoan, f.projectCost, 1e-6);
+  const thin = runFinancing({
+    ebitda: 100_000,
+    price: 1_000_000,
+    fees: 0,
+    rate: 0.1,
+    plannedLoan: 900_000,
+    sameIndustry: false,
+    buyerType: 'individual',
+    cashOnHand: 0,
+  });
+  assert.equal(thin.coverageFloor, 1.25);
+  assert.equal(thin.maxLoanReason, 'coverage');
+  assert.equal(thin.plannedOk, false);
 });
