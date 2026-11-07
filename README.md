@@ -19,8 +19,9 @@ is entered once, on the intake page. The results workspace then builds, with no 
 Tax is 21%. Every other assumption is listed on screen and labeled `assumed`. The demo button loads two
 hypothetical companies (Northline Grounds Co. buying Greenridge Landscape Co.); neither is real.
 
-Deal data comes from the DealSpan comparable deals workbook (76 deals, Deals tab). Math is deterministic TypeScript in `lib/` (`model.ts`, `comps.ts`, `financing.ts`, `fit.ts`, `assumptions.ts`). No API keys or environment
-variables. Inputs are kept in the browser’s local storage only.
+Deal data comes from the DealSpan comparable deals workbook (76 deals, Deals tab), plus optional AI-found sales (below).
+All valuation math is deterministic TypeScript in `lib/` (`model.ts`, `comps.ts`, `financing.ts`, `fit.ts`,
+`assumptions.ts`); the AI only finds deals, it never calculates. Inputs are kept in the browser tab only.
 
 ```bash
 pnpm install
