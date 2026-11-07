@@ -6,6 +6,7 @@ import { BareMoney, Choice, MoneyInput, NumberInput, SelectInput, TextInput } fr
 import { useWorkspace } from '@/components/workspace';
 import { DEMO_STORIES } from '@/lib/demo';
 import { usd } from '@/lib/format';
+import { subsectorsFor } from '@/lib/comps';
 import { INDUSTRIES } from '@/lib/industries';
 import { num, YEARS, type CompanyInput, type Intake, type SynergyInput } from '@/lib/types';
 
@@ -40,6 +41,13 @@ export function IntakeScreen() {
             missing={targetMissing}
             onChange={(company) => update((prev) => ({ ...prev, target: { ...prev.target, ...company } }))}
           >
+            <TextInput
+              label="Type of work"
+              value={intake.target.subsector}
+              suggestions={subsectorsFor(intake.target.industry)}
+              onChange={(subsector) => update((p) => ({ ...p, target: { ...p.target, subsector } }))}
+              hint="Used to rank past sales by how close they are to this company. Pick from the list for a match, or type your own."
+            />
             <div className="grid gap-4 sm:grid-cols-3">
               <MoneyInput
                 label="EBITDA the seller claims"
@@ -360,6 +368,15 @@ function DealSection({
             { value: 'strategic', label: 'A company adding a business' },
             { value: 'financial', label: 'Investor or search fund' },
             { value: 'individual', label: 'First-time buyer' },
+          ]}
+        />
+        <Choice
+          label="Will part of the price depend on future results (an earnout)?"
+          value={d.earnout}
+          onChange={(v) => update((p) => ({ ...p, deal: { ...p.deal, earnout: v } }))}
+          options={[
+            { value: 'yes', label: 'Yes' },
+            { value: 'no', label: 'No' },
           ]}
         />
       </div>

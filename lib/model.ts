@@ -1,5 +1,6 @@
 import { ASSUMPTIONS, costOfEquity, sizeDiscount, wacc } from '@/lib/assumptions';
-import { industryMarket, type IndustryMarket } from '@/lib/comps';
+import { industryMarket, scoreComparable, type IndustryMarket, type ScoredDeal } from '@/lib/comps';
+import { DEALS } from '@/lib/deals';
 import { runFinancing, type Financing } from '@/lib/financing';
 import { industryInfo } from '@/lib/industries';
 import { num, type CompanyInput, type Intake } from '@/lib/types';
@@ -551,6 +552,8 @@ export type Analysis = {
   publicRef: PublicRef | null;
   scenarios: Scenario[];
   market: IndustryMarket;
+  /** Sales in the target's industry, ranked by DealSpan similarity score (best match first). */
+  ranked: ScoredDeal[];
   financing: Financing;
   synergies: SynergyResult;
   proForma: ProForma;
@@ -587,6 +590,16 @@ export function analyze(intake: Intake): Analysis | null {
   const lbo = runLbo(verifiedEbitda, targetRows, deal);
   const publicRef = publicReference(target, verifiedEbitda);
   const market = industryMarket(target.industry);
+  const subject = {
+    industry: target.industry,
+    subsector: intake.target.subsector ?? '',
+    ebitda: verifiedEbitda,
+    buyerType: intake.deal.buyerType,
+    earnout: intake.deal.earnout === 'yes',
+  };
+  const ranked = DEALS.map((d) => scoreComparable(d, subject))
+    .filter((d): d is ScoredDeal => d != null)
+    .sort((x, y) => y.score - x.score);
   const synergies = runSynergies(intake, deal, years);
   const proForma = runProForma(buyer, buyerRows, targetRows, target, synergies, lbo);
   const fit = scoreFit(intake, buyer, target);
@@ -763,6 +776,7 @@ export function analyze(intake: Intake): Analysis | null {
     publicRef,
     scenarios,
     market,
+    ranked,
     financing,
     synergies,
     proForma,

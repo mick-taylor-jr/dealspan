@@ -37,6 +37,8 @@ test('demo intake is complete and runs every model', () => {
   const [offer, good, average, bad] = a.scenarios;
   assert.equal(offer.price, a.offerEv);
   assert.ok(good.price < average.price && average.price < bad.price);
+  assert.equal(a.ranked.length, 8);
+  assert.ok(a.ranked.every((d, i) => i === 0 || a.ranked[i - 1].score >= d.score));
   for (const s of a.scenarios)
     close(s.financing.recommendedLoan + s.financing.buyerCash, s.financing.projectCost, 1e-6);
   assert.ok(a.lbo.irr != null && a.lbo.irr > 0);
