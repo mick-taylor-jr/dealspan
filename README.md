@@ -24,13 +24,14 @@ All valuation math is deterministic TypeScript in `lib/` (`model.ts`, `comps.ts`
 `assumptions.ts`); the AI only reads documents and finds deals, it never calculates. Inputs are kept in the browser tab’s
 session storage only.
 
-## Start from a document (optional, uses Claude)
+## Start from documents (optional, uses Claude)
 
-The intake page can read a broker listing, teaser, CIM or P&L about the target and fill its blank fields. Claude only
+The intake page has two upload boxes: one for the buyer's own financial statements and one for the target's broker
+listing, teaser, CIM or P&L. Each fills only its own company's blank fields. Claude only
 copies values the document states, each with the quote (and page) it came from, and the user checks every one before
 running. Rules, enforced in `lib/extract.ts` and its tests:
 
-- Only the target is filled, and only fields that are blank. Anything the user typed is kept and the difference listed.
+- Each document fills only its own company, and only fields that are blank. Anything the user typed is kept and the difference listed.
 - Reported EBITDA (before add-backs) can fill the three-year table; adjusted EBITDA only fills "EBITDA the seller
   claims"; SDE fills nothing.
 - No calculating or estimating. Values without a quote, unknown fields and out-of-range numbers are dropped.
