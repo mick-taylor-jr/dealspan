@@ -1,12 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { connection, NextResponse, type NextRequest } from 'next/server';
 import { EXTRACT_TOOL_NAME, extractionSystemPrompt, extractionTool, sanitizeExtraction } from '@/lib/extract';
+import { anthropicKey } from '@/lib/ai-key';
 
 /**
  * Reads one document about the target and returns the intake fields it states, each with a quote.
  *
  * Env vars (server only, never NEXT_PUBLIC_):
- *   ANTHROPIC_API_KEY          required; without it the feature is hidden
+ *   ANTHROPIC_API_KEY (or DealSpan)  required; without it the feature is hidden
  *   DEALSPAN_AI_MODEL          optional, default claude-haiku-5-5
  *   DEALSPAN_AI_ACCESS_CODE    optional; when set, callers must send it (keeps strangers off your key)
  *
@@ -41,13 +42,13 @@ function fail(status: number, error: string) {
 export async function GET() {
   await connection();
   return NextResponse.json({
-    enabled: Boolean(process.env.ANTHROPIC_API_KEY),
+    enabled: Boolean(anthropicKey()),
     needsCode: Boolean(process.env.DEALSPAN_AI_ACCESS_CODE),
   });
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = anthropicKey();
   if (!apiKey) return fail(503, 'Document import is not set up on this site.');
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';

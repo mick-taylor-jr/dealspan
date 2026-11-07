@@ -10,6 +10,7 @@ import {
   type PrecedentQuery,
 } from '@/lib/ai-precedents';
 import { DEALS } from '@/lib/deals';
+import { anthropicKey } from '@/lib/ai-key';
 
 export const maxDuration = 120;
 
@@ -65,14 +66,14 @@ function parseQuery(body: unknown): PrecedentQuery | null {
 }
 
 export async function POST(request: Request) {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = anthropicKey();
   if (!key) {
     return NextResponse.json<AiResponse>({
       status: 'not-configured',
       deals: [],
       rejected: 0,
       searches: 0,
-      message: 'AI search is off: ANTHROPIC_API_KEY is not set in Vercel.',
+      message: 'AI search is off: no Anthropic API key is set in Vercel.',
     });
   }
   const query = parseQuery(await request.json().catch(() => null));
