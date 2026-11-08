@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { connection, NextResponse, type NextRequest } from 'next/server';
+import { isWorkbook, workbookToText } from '@/lib/sheet-text';
 import {
   EXTRACT_TOOL_NAME,
   extractionSystemPrompt,
@@ -97,11 +98,21 @@ export async function POST(req: NextRequest) {
         title: name,
         source: { type: 'text', media_type: 'text/plain', data: text },
       };
+    } else if (isWorkbook(lower, file.type)) {
+      let text: string;
+      try {
+        text = (await workbookToText(await file.arrayBuffer())).slice(0, MAX_TEXT_CHARS);
+      } catch {
+        return fail(400, 'Could not open that Excel file. Save it as .xlsx or CSV and try again.');
+      }
+      if (!text.trim()) return fail(400, 'That workbook has no data in it.');
+      documentBlock = {
+        type: 'document',
+        title: name,
+        source: { type: 'text', media_type: 'text/plain', data: text },
+      };
     } else {
-      return fail(
-        415,
-        'Use a PDF, a .txt or .csv file, or paste the text. For Excel, save the sheet as CSV.',
-      );
+      return fail(415, 'Use a PDF, an Excel (.xlsx) or .csv file, a .txt file, or paste the text.');
     }
   } else if (pasted) {
     source = 'Pasted text';

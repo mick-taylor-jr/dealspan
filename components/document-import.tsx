@@ -37,7 +37,7 @@ const recordKey = (role: Role): 'importedBuyer' | 'imported' =>
 /**
  * "Start from documents": one box for the buyer's own financial statements and one for the target's listing,
  * CIM or P&L. Claude fills each company's blank fields and shows the line each number came from.
- * Hidden unless the server has an Anthropic key.
+ * Without an Anthropic key on the server it shows a short note instead of the upload boxes.
  */
 export function DocumentImport() {
   const [config, setConfig] = useState<Config | null>(null);
@@ -54,7 +54,19 @@ export function DocumentImport() {
     };
   }, []);
 
-  if (!config?.enabled) return null;
+  if (config == null) return null;
+  if (!config.enabled)
+    return (
+      <section className="border border-dashed border-line bg-card px-5 py-4" aria-labelledby="import-title">
+        <h2 id="import-title" className="font-serif text-lg text-green">
+          Start from documents
+        </h2>
+        <p className="mt-1 text-sm leading-6 text-muted">
+          Uploading financial statements (PDF, Excel or CSV) needs an Anthropic API key on this deployment.
+          Enter the numbers by hand below, or load the demo deal.
+        </p>
+      </section>
+    );
 
   return (
     <section className="rounded-2xl border border-line bg-card p-6" aria-labelledby="import-title">
@@ -182,15 +194,13 @@ function ImportPanel({ role, code }: { role: Role; code: string | null }) {
                     </button>{' '}
                     or drag it here
                   </p>
-                  <p className="text-xs text-muted">
-                    PDF, .txt or .csv, up to 10 MB. Save Excel sheets as CSV.
-                  </p>
+                  <p className="text-xs text-muted">PDF, Excel (.xlsx), .csv or .txt, up to 10 MB.</p>
                 </>
               )}
               <input
                 ref={inputRef}
                 type="file"
-                accept=".pdf,.txt,.csv,.md,application/pdf,text/plain,text/csv"
+                accept=".pdf,.xlsx,.xlsm,.txt,.csv,.md,application/pdf,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 className="sr-only"
                 tabIndex={-1}
                 aria-hidden
