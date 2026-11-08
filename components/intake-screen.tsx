@@ -96,26 +96,22 @@ export function IntakeScreen() {
 
 function Hero({ onDemo, demo }: { onDemo: () => void; demo: boolean }) {
   return (
-    <header className="bg-pine text-white">
+    <header className="border-b border-line bg-card">
       <div className="mx-auto grid w-full max-w-6xl gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1.1fr_1fr] lg:py-16">
         <div className="flex flex-col gap-6">
-          <span className="text-sm font-semibold tracking-tight text-white/70">Dealspan</span>
-          <h1 className="max-w-xl text-4xl leading-[1.05] font-semibold tracking-[-0.03em] text-balance sm:text-5xl">
+          <span className="eyebrow">Deal intake</span>
+          <h1 className="max-w-xl font-serif text-4xl leading-[1.1] text-green text-balance sm:text-5xl">
             Two companies in. A price you can defend out.
           </h1>
-          <p className="max-w-lg text-base leading-7 text-white/75">
+          <p className="max-w-lg text-base leading-7 text-muted">
             Enter your company and the one you want to buy. Dealspan builds the DCF, LBO and precedents on the
             target, then shows what the two are worth together and whether the fit is real.
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={onDemo}
-              className="h-11 rounded-full bg-white px-5 text-sm font-semibold text-pine hover:bg-white/90"
-            >
+            <button type="button" onClick={onDemo} className="btn-solid">
               {demo ? 'Demo loaded' : 'Load the demo deal'}
             </button>
-            <span className="text-sm text-white/60">Fills both companies with a labeled hypothetical.</span>
+            <span className="text-sm text-muted">Fills both companies with a labeled hypothetical.</span>
           </div>
         </div>
         <DealDiagram demo={demo} />
@@ -128,37 +124,39 @@ function DealDiagram({ demo }: { demo: boolean }) {
   return (
     <div className="flex flex-col gap-3 self-center">
       <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-3">
-        <div className="rounded-xl border border-white/15 bg-white/5 p-4">
-          <div className="mb-2 h-1 w-8 rounded-full bg-[#4fc79a]" />
-          <div className="text-sm font-semibold">{demo ? 'Northline Grounds Co.' : 'Your company'}</div>
-          <p className="mt-1 text-xs leading-5 text-white/60">
+        <div className="rounded-xl border border-line bg-page p-4">
+          <div className="mb-2 h-1 w-8 rounded-full bg-green" />
+          <div className="font-serif text-base text-green">
+            {demo ? 'Northline Grounds Co.' : 'Your company'}
+          </div>
+          <p className="mt-1 text-xs leading-5 text-muted">
             {demo
               ? DEMO_STORIES.buyer.split('. ').slice(0, 1).join('. ') + '.'
               : 'Revenue, EBITDA, debt, cash, how you operate.'}
           </p>
         </div>
-        <div className="flex items-center text-2xl font-light text-white/40" aria-hidden>
+        <div className="flex items-center text-2xl font-light text-faint" aria-hidden>
           +
         </div>
-        <div className="rounded-xl border border-white/15 bg-white/5 p-4">
-          <div className="mb-2 h-1 w-8 rounded-full bg-[#e2b04a]" />
-          <div className="text-sm font-semibold">{demo ? 'Greenridge Landscape Co.' : 'The target'}</div>
-          <p className="mt-1 text-xs leading-5 text-white/60">
+        <div className="rounded-xl border border-line bg-page p-4">
+          <div className="mb-2 h-1 w-8 rounded-full bg-gold" />
+          <div className="font-serif text-base text-green">
+            {demo ? 'Greenridge Landscape Co.' : 'The target'}
+          </div>
+          <p className="mt-1 text-xs leading-5 text-muted">
             {demo
               ? DEMO_STORIES.target.split('. ').slice(0, 1).join('. ') + '.'
               : 'Three years of history and everything the models need.'}
           </p>
         </div>
       </div>
-      <div className="rounded-xl border border-white/15 bg-white/[0.07] p-4 text-sm leading-6 text-white/80">
-        <span className="font-semibold text-white">You get:</span> good, average and bad prices, financing for
+      <div className="rounded-xl border-l-2 border-green bg-page p-4 text-sm leading-6 text-ink">
+        <span className="font-semibold text-green">You get:</span> good, average and bad prices, financing for
         each, an LBO with debt paydown, synergies after haircuts, the combined company, and a fit scorecard
         with questions for the seller.
       </div>
       {demo ? (
-        <p className="text-xs leading-5 text-white/55">
-          {DEMO_STORIES.target.split('. ').slice(-2).join('. ')}
-        </p>
+        <p className="text-xs leading-5 text-muted">{DEMO_STORIES.target.split('. ').slice(-2).join('. ')}</p>
       ) : null}
     </div>
   );
@@ -168,7 +166,7 @@ function SectionHead({ title, note, missing }: { title: string; note: string; mi
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
       <div>
-        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+        <h2 className="font-serif text-2xl text-green">{title}</h2>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">{note}</p>
       </div>
       {missing != null ? <Progress missing={missing} /> : null}
@@ -178,11 +176,11 @@ function SectionHead({ title, note, missing }: { title: string; note: string; mi
 
 function Progress({ missing }: { missing: number }) {
   return missing === 0 ? (
-    <span className="shrink-0 whitespace-nowrap rounded-full bg-buyer-soft px-2.5 py-1 text-xs font-medium text-[#0e6145]">
+    <span className="shrink-0 whitespace-nowrap rounded-full bg-buyer-soft px-2.5 py-1 text-xs font-medium text-green">
       Complete
     </span>
   ) : (
-    <span className="shrink-0 whitespace-nowrap rounded-full bg-[#eef1ee] px-2.5 py-1 text-xs font-medium text-muted">
+    <span className="shrink-0 whitespace-nowrap rounded-full bg-page px-2.5 py-1 text-xs font-medium text-muted">
       {missing} to fill
     </span>
   );
@@ -207,7 +205,7 @@ function CompanyCard({
 }) {
   const set = <K extends keyof CompanyInput>(key: K, value: CompanyInput[K]) =>
     onChange({ ...company, [key]: value });
-  const accent = role === 'buyer' ? 'bg-buyer' : 'bg-target';
+  const accent = role === 'buyer' ? 'bg-green' : 'bg-gold';
   const rev = num(company.revenue[2]);
   const ebitda = num(company.ebitda[2]);
   const margin = rev && ebitda != null ? `${((ebitda / rev) * 100).toFixed(1)}% margin in 2025` : null;
@@ -218,7 +216,7 @@ function CompanyCard({
       <div className="flex flex-col gap-7 p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+            <h2 className="font-serif text-2xl text-green">{title}</h2>
             <p className="mt-1 text-sm leading-6 text-muted">{subtitle}</p>
           </div>
           <Progress missing={missing} />
@@ -474,7 +472,7 @@ function SynergySection({
             className="grid items-end gap-3 rounded-xl bg-paper p-3 sm:grid-cols-[auto_1fr_12rem_auto]"
           >
             <div
-              className="flex rounded-lg border border-line bg-white p-0.5"
+              className="flex rounded-lg border border-line bg-[#fffdf8] p-0.5"
               role="group"
               aria-label="Synergy type"
             >
@@ -484,7 +482,7 @@ function SynergySection({
                   type="button"
                   aria-pressed={line.kind === kind}
                   onClick={() => setLine(line.id, { kind })}
-                  className={`h-9 rounded-md px-3 text-sm ${line.kind === kind ? 'bg-pine text-white' : 'text-muted'}`}
+                  className={`h-9 rounded-md px-3 text-sm ${line.kind === kind ? 'bg-green text-card' : 'text-muted'}`}
                 >
                   {kind === 'cost' ? 'Cost saving' : 'New revenue'}
                 </button>
@@ -511,7 +509,7 @@ function SynergySection({
               onClick={() =>
                 update((p) => ({ ...p, synergies: p.synergies.filter((s) => s.id !== line.id) }))
               }
-              className="h-10 rounded-lg px-3 text-sm text-muted hover:bg-white hover:text-risk"
+              className="h-10 rounded-lg px-3 text-sm text-muted hover:bg-card hover:text-risk"
             >
               Remove
             </button>
@@ -672,7 +670,7 @@ function RunBar({
     ? `${firstMissing.section === 'buyer' ? 'Your company' : firstMissing.section === 'target' ? 'Target' : 'The deal'}: ${firstMissing.field}`
     : '';
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-white/90 backdrop-blur">
+    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
         <p className="text-sm text-muted" aria-live="polite">
           {ready ? (
@@ -685,17 +683,11 @@ function RunBar({
           )}
         </p>
         {ready ? (
-          <Link
-            href="/results"
-            className="inline-flex h-11 items-center rounded-full bg-pine px-6 text-sm font-semibold text-white hover:bg-pine-2"
-          >
+          <Link href="/results" className="btn-solid">
             Run the analysis
           </Link>
         ) : (
-          <span
-            aria-disabled
-            className="inline-flex h-11 cursor-not-allowed items-center rounded-full bg-[#cfd6d1] px-6 text-sm font-semibold text-white"
-          >
+          <span aria-disabled="true" className="btn-solid">
             Run the analysis
           </span>
         )}

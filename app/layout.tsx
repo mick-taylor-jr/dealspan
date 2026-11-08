@@ -1,32 +1,36 @@
 import type { Metadata } from 'next';
-import { GeistSans } from 'geist/font/sans';
-import { GeistMono } from 'geist/font/mono';
+import { SiteFooter, SiteHeader } from '@/components/site-chrome';
 import { WorkspaceProvider } from '@/components/workspace';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Dealspan',
+  title: 'DealSpan',
   description:
-    'Enter your company and the one you want to buy. Get a DCF, LBO, comps, precedents, synergies and a fit scorecard.',
+    'Enter your company and the one you want to buy. Get a DCF, LBO, precedents, synergies, SBA financing and a fit scorecard.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col bg-paper text-ink">
+    <html lang="en" className="h-full antialiased">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@600&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="flex min-h-full flex-col bg-page text-ink">
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-card focus:px-3 focus:py-2"
         >
           Skip to content
         </a>
         <WorkspaceProvider>
+          <SiteHeader />
           <div className="flex-1">{children}</div>
-          <footer className="mx-auto max-w-3xl px-6 py-10 text-center text-xs leading-5 text-faint">
-            Dealspan is a buyer-facing underwriting tool for discussion with a searcher, partner or lender. It
-            is not a formal quality-of-earnings report, not a valuation opinion, and not a credit decision or
-            commitment to lend.
-          </footer>
+          <SiteFooter />
         </WorkspaceProvider>
       </body>
     </html>
