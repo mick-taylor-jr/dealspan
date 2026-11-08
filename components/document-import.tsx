@@ -37,7 +37,7 @@ const recordKey = (role: Role): 'importedBuyer' | 'imported' =>
 /**
  * "Start from documents": one box for the buyer's own financial statements and one for the target's listing,
  * CIM or P&L. Claude fills each company's blank fields and shows the line each number came from.
- * Hidden unless the server has an Anthropic key.
+ * Without an Anthropic key on the server it shows a short note instead of the upload boxes.
  */
 export function DocumentImport() {
   const [config, setConfig] = useState<Config | null>(null);
@@ -54,13 +54,25 @@ export function DocumentImport() {
     };
   }, []);
 
-  if (!config?.enabled) return null;
+  if (config == null) return null;
+  if (!config.enabled)
+    return (
+      <section className="border border-dashed border-line bg-card px-5 py-4" aria-labelledby="import-title">
+        <h2 id="import-title" className="font-serif text-lg text-green">
+          Start from documents
+        </h2>
+        <p className="mt-1 text-sm leading-6 text-muted">
+          Uploading financial statements (PDF, Excel or CSV) needs an Anthropic API key on this deployment.
+          Enter the numbers by hand below, or load the demo deal.
+        </p>
+      </section>
+    );
 
   return (
     <section className="rounded-2xl border border-line bg-card p-6" aria-labelledby="import-title">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="max-w-2xl">
-          <h2 id="import-title" className="text-xl font-semibold tracking-tight">
+          <h2 id="import-title" className="font-serif text-2xl text-green">
             Start from documents
           </h2>
           <p className="mt-1 text-sm leading-6 text-muted">
@@ -76,7 +88,7 @@ export function DocumentImport() {
               type="password"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="h-8 w-36 rounded-lg border border-line bg-white px-2 text-sm text-ink outline-none focus:border-ink/40"
+              className="h-8 w-36 rounded-lg border border-line bg-[#fffdf8] px-2 text-sm text-ink outline-none focus:border-green"
             />
           </label>
         ) : null}
@@ -146,7 +158,7 @@ function ImportPanel({ role, code }: { role: Role; code: string | null }) {
     <div className="overflow-hidden rounded-xl border border-line">
       <div className={`h-1 ${copy.accent}`} />
       <div className="p-4">
-        <h3 className="text-base font-semibold">{copy.title}</h3>
+        <h3 className="font-serif text-lg text-green">{copy.title}</h3>
         <p className="mt-0.5 text-sm leading-6 text-muted">{copy.body}</p>
 
         {!record ? (
@@ -182,15 +194,13 @@ function ImportPanel({ role, code }: { role: Role; code: string | null }) {
                     </button>{' '}
                     or drag it here
                   </p>
-                  <p className="text-xs text-muted">
-                    PDF, .txt or .csv, up to 10 MB. Save Excel sheets as CSV.
-                  </p>
+                  <p className="text-xs text-muted">PDF, Excel (.xlsx), .csv or .txt, up to 10 MB.</p>
                 </>
               )}
               <input
                 ref={inputRef}
                 type="file"
-                accept=".pdf,.txt,.csv,.md,application/pdf,text/plain,text/csv"
+                accept=".pdf,.xlsx,.xlsm,.txt,.csv,.md,application/pdf,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 className="sr-only"
                 tabIndex={-1}
                 aria-hidden
@@ -221,7 +231,7 @@ function ImportPanel({ role, code }: { role: Role; code: string | null }) {
                   value={pasted}
                   onChange={(e) => setPasted(e.target.value)}
                   placeholder={copy.paste}
-                  className="rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-ink/40"
+                  className="rounded-lg border border-line bg-[#fffdf8] px-3 py-2 text-sm outline-none focus:border-green"
                 />
                 <div>
                   <button
@@ -232,7 +242,7 @@ function ImportPanel({ role, code }: { role: Role; code: string | null }) {
                       body.set('text', pasted);
                       void send(body, 'Reading your text…');
                     }}
-                    className="h-10 rounded-full bg-pine px-5 text-sm font-semibold text-white disabled:opacity-40"
+                    className="btn-solid"
                   >
                     Read this text
                   </button>
@@ -262,7 +272,7 @@ function Review({ role, record }: { role: Role; record: ImportRecord }) {
   if (record.checked) {
     return (
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-buyer-soft px-4 py-3 text-sm">
-        <span className="text-[#0e6145]">
+        <span className="text-green">
           Checked {record.filled.length} values from <span className="font-medium">{record.source}</span>.
         </span>
         <span className="flex gap-4">
@@ -283,7 +293,7 @@ function Review({ role, record }: { role: Role; record: ImportRecord }) {
 
   return (
     <div className="mt-3 flex flex-col gap-4">
-      <div className="rounded-xl bg-warn-soft px-3 py-2.5 text-sm leading-6 text-[#5c3d00]">
+      <div className="rounded-xl bg-warn-soft px-3 py-2.5 text-sm leading-6 text-ink">
         <span className="font-semibold">
           Filled {record.filled.length} {record.filled.length === 1 ? 'field' : 'fields'} from {record.source}
           .
@@ -306,7 +316,7 @@ function Review({ role, record }: { role: Role; record: ImportRecord }) {
                     {state === 'cleared' ? null : displayValue({ key: field.key, value: now }, role)}
                     <span
                       className={`inline-flex h-5 items-center rounded px-1.5 text-[11px] font-medium ${
-                        state === 'extracted' ? 'bg-warn-soft text-[#7a4f00]' : 'bg-[#eef1ee] text-muted'
+                        state === 'extracted' ? 'bg-warn-soft text-gold' : 'bg-page text-muted'
                       }`}
                     >
                       {state === 'extracted' ? 'extracted' : state === 'edited' ? 'you edited' : 'cleared'}
@@ -370,11 +380,7 @@ function Review({ role, record }: { role: Role; record: ImportRecord }) {
       ) : null}
 
       <div className="flex flex-wrap items-center gap-4">
-        <button
-          type="button"
-          onClick={() => setRecord({ ...record, checked: true })}
-          className="h-10 rounded-full bg-pine px-5 text-sm font-semibold text-white"
-        >
+        <button type="button" onClick={() => setRecord({ ...record, checked: true })} className="btn-solid">
           I’ve checked these
         </button>
         <button

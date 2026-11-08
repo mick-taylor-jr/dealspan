@@ -3,7 +3,7 @@
 import { useId, type ReactNode } from 'react';
 
 const shell =
-  'flex h-10 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm transition-colors focus-within:border-ink/40';
+  'flex h-10 items-center gap-1.5 border border-line bg-[#fffdf8] px-3 text-sm transition-colors focus-within:border-green';
 
 function digitsOnly(value: string) {
   return value
@@ -37,7 +37,7 @@ export function Field({
         {label}
       </label>
       {children(id)}
-      {hint ? <span className="text-xs leading-5 text-faint">{hint}</span> : null}
+      {hint ? <span className="text-xs leading-5 text-muted">{hint}</span> : null}
     </div>
   );
 }
@@ -68,7 +68,7 @@ export function TextInput({
           <textarea
             id={id}
             rows={2}
-            className="min-h-16 rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-ink/40"
+            className="min-h-16 border border-line bg-[#fffdf8] px-3 py-2 text-sm outline-none focus:border-green"
             value={value}
             placeholder={placeholder}
             onChange={(event) => onChange(event.target.value)}
@@ -78,7 +78,7 @@ export function TextInput({
             <input
               id={id}
               list={suggestions?.length ? `${id}-list` : undefined}
-              className="h-10 rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-ink/40"
+              className="h-10 border border-line bg-[#fffdf8] px-3 text-sm outline-none focus:border-green"
               value={value}
               placeholder={placeholder}
               onChange={(event) => onChange(event.target.value)}
@@ -115,7 +115,7 @@ export function SelectInput({
       {(id) => (
         <select
           id={id}
-          className="h-10 w-full min-w-0 rounded-lg border border-line bg-white px-2.5 text-sm outline-none focus:border-ink/40"
+          className="h-10 w-full min-w-0 border border-line bg-[#fffdf8] px-2.5 text-sm outline-none focus:border-green"
           value={value}
           onChange={(event) => onChange(event.target.value)}
         >
@@ -139,15 +139,17 @@ export function BareMoney({
   onChange,
   id,
   ariaLabel,
+  large,
 }: {
   value: string;
   onChange: (value: string) => void;
   id?: string;
   ariaLabel?: string;
+  large?: boolean;
 }) {
   return (
-    <span className={shell}>
-      <span className="text-faint">$</span>
+    <span className={large ? `${shell} h-14 border-green font-serif text-2xl text-green` : shell}>
+      <span className="text-muted">$</span>
       <input
         id={id}
         aria-label={ariaLabel}
@@ -165,15 +167,17 @@ export function MoneyInput({
   value,
   onChange,
   hint,
+  large,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   hint?: ReactNode;
+  large?: boolean;
 }) {
   return (
     <Field label={label} hint={hint}>
-      {(id) => <BareMoney id={id} value={value} onChange={onChange} />}
+      {(id) => <BareMoney id={id} value={value} onChange={onChange} large={large} />}
     </Field>
   );
 }
@@ -204,7 +208,7 @@ export function NumberInput({
             value={value}
             onChange={(event) => onChange(decimal(event.target.value, places))}
           />
-          <span className="text-faint">{suffix}</span>
+          <span className="text-muted">{suffix}</span>
         </span>
       )}
     </Field>
@@ -232,8 +236,10 @@ export function Choice<T extends string>({
           return (
             <label
               key={option.value}
-              className={`cursor-pointer rounded-full border px-3.5 py-1.5 text-sm transition-colors has-focus-visible:outline-2 has-focus-visible:outline-syn ${
-                on ? 'border-pine bg-pine text-white' : 'border-line bg-white text-ink hover:border-ink/30'
+              className={`cursor-pointer border px-3.5 py-1.5 text-sm transition-colors has-focus-visible:outline-2 has-focus-visible:outline-green ${
+                on
+                  ? 'border-green bg-green font-semibold text-card'
+                  : 'border-line bg-[#fffdf8] text-ink hover:border-green'
               }`}
             >
               <input

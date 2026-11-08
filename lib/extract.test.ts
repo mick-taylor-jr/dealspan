@@ -151,3 +151,26 @@ test('the buyer prompt describes the buyer and forbids computing EBITDA', () => 
   assert.match(prompt, /do not add D&A to operating income yourself/);
   assert.doesNotMatch(prompt, /sellerEbitda/);
 });
+
+test('reads an Excel P&L into labeled CSV text, using saved formula results', async () => {
+  const ExcelJS = (await import('exceljs')).default;
+  const { workbookToText, isWorkbook } = await import('./sheet-text');
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('P&L');
+  ws.addRow(['Line item', 2023, 2024, 2025]);
+  ws.addRow(['Revenue', 1500000, 1700000, 1900000]);
+  ws.addRow(['EBITDA, reported', 250000, 290000, { formula: 'B3+81000', result: 331000 }]);
+  ws.addRow(['Note', 'Includes "one-time" items, owner salary', null, null]);
+  const hidden = wb.addWorksheet('Scratch');
+  hidden.state = 'hidden';
+  hidden.addRow(['ignore me']);
+  const buf = await wb.xlsx.writeBuffer();
+  const text = await workbookToText(buf as ArrayBuffer);
+  assert.match(text, /^Sheet: P&L/);
+  assert.match(text, /Revenue,1500000,1700000,1900000/);
+  assert.match(text, /EBITDA\, reported|"EBITDA, reported",250000,290000,331000/);
+  assert.match(text, /"Includes ""one-time"" items, owner salary"/);
+  assert.doesNotMatch(text, /ignore me/);
+  assert.ok(isWorkbook('Target P&L.XLSX'));
+  assert.ok(!isWorkbook('statements.pdf'));
+});
